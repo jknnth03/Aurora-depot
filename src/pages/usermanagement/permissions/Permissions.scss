@@ -1,0 +1,21 @@
+@use "../../../styles/colors" as *;
+
+.permissions {
+  &__group-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 500;
+    text-transform: capitalize;
+    color: $primary-main;
+    background: rgba($primary-main, 0.08);
+    font-family: "Poppins", sans-serif;
+
+    [data-theme="dark"] & {
+      color: $secondary-main;
+      background: rgba($secondary-main, 0.12);
+    }
+  }
+}

@@ -1,0 +1,224 @@
+@use "../../styles/colors" as *;
+
+.ts {
+  &__field {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    border-radius: 8px;
+    padding: 0 12px;
+    height: 28px;
+    background: $bg-main;
+    transition:
+      width 0.25s ease,
+      border-color 0.2s,
+      background 0.2s;
+    overflow: hidden;
+
+    &--collapsed {
+      width: 36px;
+      min-width: unset;
+      padding: 0;
+      justify-content: center;
+      border: 1.5px solid rgba(255, 255, 255, 0.35);
+      background: rgba(255, 255, 255, 0.25);
+      cursor: pointer;
+
+      &:hover {
+        background: rgba(255, 255, 255, 0.38);
+        border-color: rgba(255, 255, 255, 0.5);
+      }
+    }
+
+    &--expanded {
+      width: 220px;
+      min-width: 220px;
+      padding: 0 12px;
+      border: 1.5px solid rgba(255, 255, 255, 0.35);
+      background: rgba(255, 255, 255, 0.25);
+
+      &:focus-within {
+        border-color: rgba(255, 255, 255, 0.6);
+      }
+    }
+  }
+
+  &__field-icon {
+    font-size: 1rem !important;
+    flex-shrink: 0;
+  }
+
+  &__input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    outline: none;
+    font-family: "Poppins", sans-serif;
+    font-size: 0.82rem;
+    color: $text-primary;
+
+    &::placeholder {
+      color: rgba(255, 255, 255, 0.6);
+    }
+  }
+
+  &__clear {
+    display: flex;
+    align-items: center;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    flex-shrink: 0;
+
+    svg {
+      font-size: 0.9rem !important;
+    }
+  }
+
+  &__filter {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition:
+      background 0.2s,
+      border-color 0.2s;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.38) !important;
+      border-color: rgba(255, 255, 255, 0.5) !important;
+    }
+
+    &--active {
+      background: rgba(255, 255, 255, 0.38) !important;
+      border-color: rgba(255, 255, 255, 0.5) !important;
+    }
+  }
+
+  &__archived {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    height: 28px;
+    padding: 0 16px;
+    border-radius: 8px;
+    font-family: "Poppins", sans-serif;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.6px;
+    text-transform: capitalize;
+    cursor: pointer;
+    transition:
+      background 0.2s,
+      border-color 0.2s;
+
+    svg {
+      font-size: 1.1rem !important;
+      flex-shrink: 0;
+    }
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.38) !important;
+      border-color: rgba(255, 255, 255, 0.5) !important;
+    }
+
+    &--active {
+      border-color: $status-error !important;
+      color: $status-error !important;
+      background: rgba(255, 255, 255, 0.25) !important;
+
+      svg {
+        color: $status-error;
+      }
+    }
+  }
+
+  &__archived-label {
+    line-height: 1;
+  }
+
+  // ── Dropdown ──────────────────────────────────────────────
+  &__dropdown {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    border-radius: 8px;
+    height: 28px;
+    width: 160px;
+    min-width: 160px;
+    padding: 0 10px 0 12px;
+    border: 1.5px solid rgba(255, 255, 255, 0.35);
+    background: rgba(255, 255, 255, 0.25);
+    cursor: pointer;
+    transition:
+      border-color 0.2s,
+      background 0.2s;
+    overflow: visible;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.38);
+      border-color: rgba(255, 255, 255, 0.5);
+    }
+  }
+
+  &__dropdown-label {
+    flex: 1;
+    font-family: "Poppins", sans-serif;
+    font-size: 0.82rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  &__dropdown-arrow {
+    font-size: 1rem !important;
+    flex-shrink: 0;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+
+    &--open {
+      transform: rotate(180deg);
+    }
+  }
+
+  &__dropdown-menu {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    min-width: 100%;
+    background: #2a2a2a;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+    z-index: 999;
+    overflow: hidden;
+    padding: 4px 0;
+  }
+
+  &__dropdown-option {
+    padding: 7px 14px;
+    font-family: "Poppins", sans-serif;
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.85);
+    cursor: pointer;
+    transition: background 0.15s;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    &--selected {
+      color: #ffffff;
+      font-weight: 600;
+      background: rgba(255, 255, 255, 0.12);
+    }
+  }
+}

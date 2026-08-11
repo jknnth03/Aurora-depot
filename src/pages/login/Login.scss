@@ -1,0 +1,433 @@
+@use "../../styles/mixins" as *;
+@use "../../styles/colors" as *;
+
+@keyframes wave-bounce {
+  0% {
+    transform: translateY(0);
+  }
+  30% {
+    transform: translateY(-6px);
+  }
+  60% {
+    transform: translateY(0);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+
+.wave-text {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  &__char {
+    display: inline-block;
+    animation: none;
+  }
+}
+
+.login {
+  display: flex;
+  height: 100vh;
+  width: 100%;
+  overflow: hidden;
+  font-family: "Poppins", sans-serif;
+  background-color: $bg-main;
+
+  &__left {
+    width: 64%;
+    height: 100%;
+    background-image: url("../../assets/login-background.jpg");
+    background-size: cover;
+    background-position: center;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 48px 44px 24px;
+    overflow: hidden;
+
+    @include lm {
+      display: none;
+    }
+
+    &::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        180deg,
+        rgba(20, 12, 4, 0.55) 0%,
+        rgba(20, 12, 4, 0.05) 32%,
+        rgba(20, 12, 4, 0.1) 55%,
+        rgba(20, 12, 4, 0.65) 100%
+      );
+      z-index: 0;
+    }
+  }
+
+  &__left-top {
+    z-index: 1;
+  }
+
+  &__brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 52px;
+  }
+
+  &__brand-icon {
+    width: 46px;
+    height: 46px;
+    background: rgba(255, 255, 255, 0.16);
+    backdrop-filter: blur(8px);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+    flex-shrink: 0;
+
+    img {
+      width: 26px;
+      height: 26px;
+      object-fit: contain;
+    }
+  }
+
+  &__brand-name {
+    color: $primary-main;
+    font-size: 23px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    text-shadow: 0 1px 8px rgba(0, 0, 0, 0.3);
+  }
+
+  &__brand-sub {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 16px;
+    margin-top: 2px;
+    text-shadow: 0 1px 6px rgba(0, 0, 0, 0.25);
+  }
+
+  &__headline {
+    color: $text-white;
+    font-size: 33px;
+    font-weight: 700;
+    line-height: 1.25;
+    margin: 0;
+    text-shadow: 0 2px 14px rgba(0, 0, 0, 0.35);
+
+    span {
+      color: $secondary-main;
+    }
+  }
+
+  &__desc {
+    color: rgba(255, 255, 255, 0.92);
+    font-size: 14px;
+    line-height: 1.7;
+    margin: 0;
+    text-shadow: 0 1px 10px rgba(0, 0, 0, 0.3);
+  }
+
+  &__quality {
+    position: absolute;
+    top: 52%;
+    right: 7%;
+    transform: translateY(-50%);
+    max-width: 260px;
+    text-align: right;
+    z-index: 1;
+
+    p {
+      color: $text-white;
+      font-size: 22px;
+      font-weight: 700;
+      line-height: 1.35;
+      margin: 0;
+      text-shadow: 0 2px 14px rgba(0, 0, 0, 0.35);
+    }
+
+    span {
+      color: $secondary-main;
+    }
+  }
+
+  &__stats {
+    display: flex;
+    gap: 12px;
+    z-index: 1;
+  }
+
+  &__stat {
+    background: rgba(255, 255, 255, 0.14);
+    backdrop-filter: blur(10px);
+    border-radius: 12px;
+    padding: 7px 16px;
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    flex: 1;
+    transition: background 0.2s;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+  }
+
+  &__stat-num {
+    color: $text-white;
+    font-size: 18px;
+    font-weight: 700;
+    text-shadow: 0 1px 8px rgba(0, 0, 0, 0.3);
+  }
+
+  &__stat-label {
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 11px;
+    text-shadow: 0 1px 6px rgba(0, 0, 0, 0.25);
+  }
+
+  &__right {
+    flex: 1;
+    height: 100%;
+    background-color: $bg-cream;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 48px 64px;
+
+    @include md {
+      padding: 48px 40px;
+    }
+
+    @include sm {
+      padding: 40px 24px;
+    }
+  }
+
+  &__form-wrap {
+    width: 100%;
+    max-width: 380px;
+  }
+
+  &__logo-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 28px;
+  }
+
+  &__logo {
+    width: 40px;
+    height: 40px;
+    object-fit: contain;
+  }
+
+  &__logo-text {
+    font-size: 20px;
+    font-weight: 700;
+    color: $primary-main;
+    letter-spacing: -0.3px;
+
+    span {
+      font-size: 20px;
+      font-weight: 700;
+      color: $primary-main;
+    }
+  }
+
+  &__title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 6px;
+  }
+
+  &__badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: transparent;
+    color: $primary-main;
+    font-size: 11px;
+    font-weight: 500;
+    padding: 5px 12px;
+    border-radius: 8px;
+    border: 1.5px solid $primary-main;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  &__title {
+    font-size: 28px;
+    font-weight: 700;
+    color: $text-primary;
+    margin: 0;
+  }
+
+  &__subtitle {
+    font-size: 13px;
+    color: $text-muted;
+    margin: 0 0 28px;
+  }
+
+  &__field {
+    margin-bottom: 18px;
+  }
+
+  &__label {
+    font-size: 12px;
+    font-weight: 500;
+    color: $text-secondary;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: 8px;
+  }
+
+  &__required {
+    color: $status-error;
+    font-size: 9px;
+  }
+
+  &__input-wrap {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border: 1.5px solid $border-color;
+    border-radius: 12px;
+    padding: 0 14px;
+    background: $bg-paper;
+    transition:
+      border-color 0.2s,
+      box-shadow 0.2s;
+
+    &:focus-within {
+      border-color: $primary-main;
+      box-shadow: 0 0 0 3px rgba(243, 121, 37, 0.12);
+    }
+  }
+
+  &__field-icon {
+    color: $text-muted !important;
+    font-size: 1.2rem !important;
+    flex-shrink: 0;
+  }
+
+  &__input-wrap input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    padding: 13px 0;
+    font-size: 14px;
+    color: $text-primary;
+    outline: none;
+    font-family: "Poppins", sans-serif;
+
+    &::placeholder {
+      color: $text-muted;
+      font-size: 13px;
+    }
+  }
+
+  &__toggle-pass {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    color: $text-muted;
+    display: flex;
+    align-items: center;
+    transition: color 0.2s;
+
+    &:hover {
+      color: $primary-main;
+    }
+  }
+
+  &__error {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 6px;
+    margin-left: 4px;
+    font-size: 0.75rem;
+    color: $status-error;
+    font-family: "Poppins", sans-serif;
+
+    svg {
+      font-size: 0.82rem !important;
+    }
+  }
+
+  &__btn {
+    margin-top: 24px;
+    width: 100%;
+    padding: 15px;
+    background: $text-primary;
+    color: $text-white;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 2.5px;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    font-family: "Poppins", sans-serif;
+    transition:
+      background 0.2s,
+      transform 0.1s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+
+    &:hover {
+      background: $primary-main;
+    }
+
+    &:active {
+      transform: scale(0.98);
+    }
+
+    &:disabled {
+      opacity: 0.7;
+      cursor: not-allowed;
+    }
+
+    &--loading {
+      background: $primary-main;
+
+      .wave-text__char {
+        animation: wave-bounce 0.9s ease-in-out infinite;
+      }
+    }
+  }
+
+  &__footer {
+    text-align: center;
+    margin-top: 28px;
+    font-size: 11px;
+    color: $text-muted;
+
+    span {
+      color: $primary-main;
+      font-weight: 600;
+    }
+  }
+
+  &__mis-logo {
+    display: block;
+    margin: 12px auto 0;
+    max-width: 48px;
+    height: auto;
+  }
+}
