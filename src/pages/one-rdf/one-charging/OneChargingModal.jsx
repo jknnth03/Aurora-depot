@@ -3,22 +3,7 @@ import DialogContent from "@mui/material/DialogContent";
 import IconButton from "@mui/material/IconButton";
 import CloseIcon from "@mui/icons-material/Close";
 import RemoveRedEyeIcon from "@mui/icons-material/RemoveRedEye";
-import Chip from "@mui/material/Chip";
-import {
-  getChipBg,
-  getChipTextColor,
-  getChipName,
-  CHIP_SX,
-} from "../../../components/accountmenu/ChipColorPickerUtils";
 import "./OneChargingModal.scss";
-
-const formatAmount = (val) =>
-  val != null
-    ? `₱${Number(val).toLocaleString(undefined, {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      })}`
-    : "-";
 
 const formatDate = (val) => {
   if (!val) return "-";
@@ -34,9 +19,6 @@ const formatDate = (val) => {
 };
 
 const OneChargingModal = ({ open, onClose, selectedRow = null }) => {
-  const isInactive = selectedRow?.status === "inactive";
-  const chipId = isInactive ? "chip-inactive" : "chip-active";
-
   return (
     <Dialog
       open={open}
@@ -60,17 +42,31 @@ const OneChargingModal = ({ open, onClose, selectedRow = null }) => {
 
       <DialogContent className="ocm__content">
         <div className="ocm__group">
-          <p className="ocm__group-label">One Charging Details</p>
+          <p className="ocm__group-label">General Information</p>
 
-          <div className="ocm__field">
-            <div className="ocm__input-wrap">
-              <label className="ocm__label">Code</label>
-              <input
-                type="text"
-                value={selectedRow?.code ?? ""}
-                disabled
-                readOnly
-              />
+          <div className="ocm__row">
+            <div className="ocm__field ocm__field--grow">
+              <div className="ocm__input-wrap">
+                <label className="ocm__label">Code</label>
+                <input
+                  type="text"
+                  value={selectedRow?.code ?? ""}
+                  disabled
+                  readOnly
+                />
+              </div>
+            </div>
+
+            <div className="ocm__field ocm__field--grow">
+              <div className="ocm__input-wrap">
+                <label className="ocm__label">Sync ID</label>
+                <input
+                  type="text"
+                  value={selectedRow?.sync_id ?? ""}
+                  disabled
+                  readOnly
+                />
+              </div>
             </div>
           </div>
 
@@ -85,14 +81,22 @@ const OneChargingModal = ({ open, onClose, selectedRow = null }) => {
               />
             </div>
           </div>
+        </div>
 
-          <div className="ocm__row" style={{ marginTop: 12 }}>
+        <div className="ocm__group">
+          <p className="ocm__group-label">Company Structure</p>
+
+          <div className="ocm__row">
             <div className="ocm__field ocm__field--grow">
               <div className="ocm__input-wrap">
-                <label className="ocm__label">Amount</label>
+                <label className="ocm__label">Company</label>
                 <input
                   type="text"
-                  value={formatAmount(selectedRow?.amount)}
+                  value={
+                    selectedRow?.company_name
+                      ? `${selectedRow.company_code} - ${selectedRow.company_name}`
+                      : ""
+                  }
                   disabled
                   readOnly
                 />
@@ -100,15 +104,51 @@ const OneChargingModal = ({ open, onClose, selectedRow = null }) => {
             </div>
 
             <div className="ocm__field ocm__field--grow">
-              <div className="ocm__input-wrap ocm__input-wrap--chip">
-                <label className="ocm__label">Status</label>
-                <Chip
-                  label={getChipName(chipId)}
-                  sx={{
-                    ...CHIP_SX,
-                    backgroundColor: getChipBg(chipId),
-                    color: getChipTextColor(chipId),
-                  }}
+              <div className="ocm__input-wrap">
+                <label className="ocm__label">Business Unit</label>
+                <input
+                  type="text"
+                  value={
+                    selectedRow?.business_unit_name
+                      ? `${selectedRow.business_unit_code} - ${selectedRow.business_unit_name}`
+                      : ""
+                  }
+                  disabled
+                  readOnly
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="ocm__row" style={{ marginTop: 12 }}>
+            <div className="ocm__field ocm__field--grow">
+              <div className="ocm__input-wrap">
+                <label className="ocm__label">Department</label>
+                <input
+                  type="text"
+                  value={
+                    selectedRow?.department_name
+                      ? `${selectedRow.department_code} - ${selectedRow.department_name}`
+                      : ""
+                  }
+                  disabled
+                  readOnly
+                />
+              </div>
+            </div>
+
+            <div className="ocm__field ocm__field--grow">
+              <div className="ocm__input-wrap">
+                <label className="ocm__label">Department Unit</label>
+                <input
+                  type="text"
+                  value={
+                    selectedRow?.department_unit_name
+                      ? `${selectedRow.department_unit_code} - ${selectedRow.department_unit_name}`
+                      : ""
+                  }
+                  disabled
+                  readOnly
                 />
               </div>
             </div>
@@ -116,13 +156,67 @@ const OneChargingModal = ({ open, onClose, selectedRow = null }) => {
 
           <div className="ocm__field" style={{ marginTop: 12 }}>
             <div className="ocm__input-wrap">
-              <label className="ocm__label">Date Synced</label>
+              <label className="ocm__label">Sub Unit</label>
               <input
                 type="text"
-                value={formatDate(selectedRow?.synced_at)}
+                value={
+                  selectedRow?.sub_unit_name
+                    ? `${selectedRow.sub_unit_code} - ${selectedRow.sub_unit_name}`
+                    : ""
+                }
                 disabled
                 readOnly
               />
+            </div>
+          </div>
+        </div>
+
+        <div className="ocm__group">
+          <p className="ocm__group-label">Location</p>
+
+          <div className="ocm__field">
+            <div className="ocm__input-wrap">
+              <label className="ocm__label">Location</label>
+              <input
+                type="text"
+                value={
+                  selectedRow?.location_name
+                    ? `${selectedRow.location_code} - ${selectedRow.location_name}`
+                    : ""
+                }
+                disabled
+                readOnly
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="ocm__group">
+          <p className="ocm__group-label">Sync Details</p>
+
+          <div className="ocm__row">
+            <div className="ocm__field ocm__field--grow">
+              <div className="ocm__input-wrap">
+                <label className="ocm__label">Date Created</label>
+                <input
+                  type="text"
+                  value={formatDate(selectedRow?.created_at)}
+                  disabled
+                  readOnly
+                />
+              </div>
+            </div>
+
+            <div className="ocm__field ocm__field--grow">
+              <div className="ocm__input-wrap">
+                <label className="ocm__label">Last Updated</label>
+                <input
+                  type="text"
+                  value={formatDate(selectedRow?.updated_at)}
+                  disabled
+                  readOnly
+                />
+              </div>
             </div>
           </div>
         </div>

@@ -43,6 +43,25 @@
     }
   }
 
+  &__header-actions {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+  }
+
+  &__edit {
+    color: $status-success !important;
+    transition: color 0.15s !important;
+
+    svg {
+      font-size: 0.95rem !important;
+    }
+
+    &:hover {
+      color: darken($status-success, 8%) !important;
+    }
+  }
+
   &__close {
     color: $text-muted !important;
     transition: color 0.15s !important;
@@ -81,13 +100,28 @@
   }
 
   &__group {
-    margin-bottom: 4px;
+    margin-bottom: 16px;
   }
 
   &__row {
     display: flex;
     align-items: center;
     gap: 12px;
+  }
+
+  &__grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  &__col-half {
+    flex: 1 1 calc(50% - 6px);
+    min-width: 140px;
+  }
+
+  &__col-full {
+    flex: 1 1 100%;
   }
 
   &__field {
@@ -134,6 +168,16 @@
     }
   }
 
+  &__required {
+    display: inline-flex;
+    align-items: center;
+    margin-left: 3px;
+    color: $status-error;
+    font-size: 0.75rem;
+    font-weight: 700;
+    line-height: 1;
+  }
+
   &__input-wrap {
     display: flex;
     align-items: center;
@@ -174,6 +218,86 @@
 
     &--chip {
       padding: 8px 12px;
+    }
+
+    &--editable {
+      background: #fff !important;
+      cursor: text;
+      pointer-events: auto;
+      transition: border-color 0.2s;
+
+      .oum__label {
+        background: #fff;
+        opacity: 1;
+      }
+
+      [data-theme="dark"] & {
+        background: $bg-main !important;
+      }
+
+      &:focus-within {
+        border-color: $primary-main;
+
+        .oum__label {
+          color: $primary-main;
+        }
+      }
+
+      &--error {
+        border-color: $status-error !important;
+
+        .oum__label {
+          color: $status-error !important;
+        }
+      }
+
+      input {
+        color: $text-primary;
+        cursor: text;
+
+        [data-theme="dark"] & {
+          color: rgba(255, 255, 255, 0.85);
+        }
+      }
+    }
+
+    &--error {
+      border-color: $status-error !important;
+
+      .oum__label {
+        color: $status-error !important;
+      }
+    }
+  }
+
+  &__error {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 5px;
+    margin-left: 4px;
+    font-size: 0.68rem;
+    font-weight: 400;
+    color: $status-error;
+    font-family: "Poppins", sans-serif;
+
+    svg {
+      font-size: 0.72rem !important;
+    }
+  }
+
+  &__pw-toggle {
+    color: $text-muted !important;
+    flex-shrink: 0;
+
+    &:hover {
+      color: $primary-main !important;
+    }
+
+    [data-theme="dark"] & {
+      &:hover {
+        color: $secondary-main !important;
+      }
     }
   }
 

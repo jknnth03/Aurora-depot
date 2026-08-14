@@ -453,6 +453,8 @@ const UsersModal = ({
   onClose,
   selectedId = null,
   onPasswordChanged,
+  onCreated,
+  prefillData = null,
 }) => {
   const isViewOnly = !!selectedId;
   const [isEditMode, setIsEditMode] = useState(false);
@@ -513,18 +515,18 @@ const UsersModal = ({
       reset({
         role_id: "",
         one_charging_id: "",
-        id_prefix: "",
-        id_no: "",
-        first_name: "",
-        middle_name: "",
-        last_name: "",
-        suffix: "",
+        id_prefix: prefillData?.id_prefix ?? "",
+        id_no: prefillData?.id_no ?? "",
+        first_name: prefillData?.first_name ?? "",
+        middle_name: prefillData?.middle_name ?? "",
+        last_name: prefillData?.last_name ?? "",
+        suffix: prefillData?.suffix ?? "",
         mobile_number: "",
         gender: "",
-        username: "",
+        username: prefillData?.username ?? "",
       });
     }
-  }, [open, selectedId, reset]);
+  }, [open, selectedId, prefillData, reset]);
 
   useEffect(() => {
     if (!open) {
@@ -613,6 +615,7 @@ const UsersModal = ({
         },
         username,
         role_id,
+        ...(prefillData ? { for_syncing: true } : {}),
       }).unwrap();
 
       window.__snackbar__?.enqueueSnackbar("User created successfully.", {
@@ -620,6 +623,7 @@ const UsersModal = ({
       });
       setConfirmOpen(false);
       setPendingFormData(null);
+      onCreated?.();
       onClose();
     } catch (err) {
       console.error("Save failed:", err);

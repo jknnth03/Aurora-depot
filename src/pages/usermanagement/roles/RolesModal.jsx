@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
@@ -20,48 +20,9 @@ import {
   useCreateRoleMutation,
   useUpdateRoleMutation,
 } from "../../../features/api/usersmanagement/rolesApi";
+import { useGetPermissionsQuery } from "../../../features/api/usersmanagement/permissionsApi";
 import ConfirmDialog from "../../../reusable-components/confirm-dialog/ConfirmDialog";
 import "./RolesModal.scss";
-
-const PERMISSION_GROUPS = [
-  {
-    module: "User",
-    permissions: [
-      { value: "user.view", label: "View" },
-      { value: "user.create", label: "Create" },
-      { value: "user.update", label: "Update" },
-      { value: "user.delete", label: "Delete" },
-      { value: "user.change-password", label: "Change Password" },
-    ],
-  },
-  {
-    module: "Role",
-    permissions: [
-      { value: "role.view", label: "View" },
-      { value: "role.create", label: "Create" },
-      { value: "role.update", label: "Update" },
-      { value: "role.delete", label: "Delete" },
-    ],
-  },
-  {
-    module: "Location",
-    permissions: [
-      { value: "location.view", label: "View" },
-      { value: "location.create", label: "Create" },
-      { value: "location.update", label: "Update" },
-      { value: "location.delete", label: "Delete" },
-    ],
-  },
-  {
-    module: "Area",
-    permissions: [
-      { value: "area.view", label: "View" },
-      { value: "area.create", label: "Create" },
-      { value: "area.update", label: "Update" },
-      { value: "area.delete", label: "Delete" },
-    ],
-  },
-];
 
 const schema = yup.object({
   name: yup.string().required("Role name is required."),
@@ -74,6 +35,26 @@ const schema = yup.object({
 
 const normalizePermissions = (permissions) =>
   (permissions ?? []).map((p) => (typeof p === "string" ? p : p?.name));
+
+const formatLabel = (str) =>
+  str.replace(/[-_]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+
+const buildPermissionGroups = (permissions) => {
+  const map = {};
+  (permissions ?? []).forEach((perm) => {
+    const name = typeof perm === "string" ? perm : perm?.name;
+    if (!name || !name.includes(".")) return;
+    const [moduleKey, ...actionParts] = name.split(".");
+    const moduleLabel = formatLabel(moduleKey);
+    const actionLabel = formatLabel(actionParts.join(" "));
+    if (!map[moduleLabel]) map[moduleLabel] = [];
+    map[moduleLabel].push({ value: name, label: actionLabel });
+  });
+  return Object.entries(map).map(([module, perms]) => ({
+    module,
+    permissions: perms,
+  }));
+};
 
 const SkeletonLoader = () => (
   <div className="rm__skeleton-wrap">
@@ -96,10 +77,12 @@ const SkeletonLoader = () => (
 );
 
 const PermissionsChecklist = ({
+  groups,
   value = [],
   onChange,
   error,
   readOnly = false,
+  isLoading = false,
 }) => {
   const handleToggle = (perm) => {
     if (readOnly) return;
@@ -107,9 +90,25 @@ const PermissionsChecklist = ({
     onChange(already ? value.filter((v) => v !== perm) : [...value, perm]);
   };
 
+  if (isLoading) {
+    return (
+      <div className="rm__perm-wrap">
+        <span className="ut__skeleton rm__skeleton-field rm__skeleton-field--tall" />
+      </div>
+    );
+  }
+
+  if (!groups || groups.length === 0) {
+    return (
+      <div className="rm__perm-wrap">
+        <p className="rm__perm-empty">No permissions available.</p>
+      </div>
+    );
+  }
+
   return (
     <div className={`rm__perm-wrap${error ? " rm__perm-wrap--error" : ""}`}>
-      {PERMISSION_GROUPS.map((group) => (
+      {groups.map((group) => (
         <div key={group.module} className="rm__perm-group">
           <p className="rm__perm-group-label">{group.module}</p>
           <div className="rm__perm-options">
@@ -149,6 +148,19 @@ const RolesModal = ({ open, onClose, selectedId = null }) => {
     {
       skip: !selectedId || !open,
     },
+  );
+
+  const { data: permissionsData, isFetching: permissionsLoading } =
+    useGetPermissionsQuery(undefined, { skip: !open });
+
+  const allPermissions = useMemo(
+    () => permissionsData?.data?.data ?? permissionsData?.data ?? [],
+    [permissionsData],
+  );
+
+  const permissionGroups = useMemo(
+    () => buildPermissionGroups(allPermissions),
+    [allPermissions],
   );
 
   const {
@@ -298,8 +310,10 @@ const RolesModal = ({ open, onClose, selectedId = null }) => {
             <div className="rm__group">
               <p className="rm__group-label">Permissions</p>
               <PermissionsChecklist
+                groups={permissionGroups}
                 value={normalizePermissions(selectedRow?.permissions)}
                 readOnly
+                isLoading={permissionsLoading}
               />
             </div>
 
@@ -357,9 +371,11 @@ const RolesModal = ({ open, onClose, selectedId = null }) => {
                 control={control}
                 render={({ field }) => (
                   <PermissionsChecklist
+                    groups={permissionGroups}
                     value={field.value}
                     onChange={field.onChange}
                     error={!!errors.permissions}
+                    isLoading={permissionsLoading}
                   />
                 )}
               />

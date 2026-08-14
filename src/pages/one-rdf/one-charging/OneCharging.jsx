@@ -3,28 +3,18 @@ import { useRememberQueryParams } from "../../../hooks/useRememberQueryParams";
 import useDebounce from "../../../hooks/useDebounce";
 import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
 import SyncIcon from "@mui/icons-material/Sync";
-import Chip from "@mui/material/Chip";
 import PageContainer from "../../../reusable-components/page-container/PageContainer";
 import UniversalTable from "../../../reusable-components/universal-table/UniversalTable";
 import TablePagination from "../../../reusable-components/table-pagination/TablePagination";
 import UniversalButton from "../../../reusable-components/universal-buttons/UniversalButtons";
-import {
-  TableSearchField,
-  ArchivedButton,
-} from "../../../reusable-components/table-search/TableSearch";
+import { TableSearchField } from "../../../reusable-components/table-search/TableSearch";
 import {
   useGetOneChargingsQuery,
   useSyncOneChargingMutation,
 } from "../../../features/api/one-rdf/oneChargingApi";
 import ConfirmDialog from "../../../reusable-components/confirm-dialog/ConfirmDialog";
 import OneChargingModal from "./OneChargingModal";
-import {
-  getChipBg,
-  getChipTextColor,
-  getChipName,
-  useChipColors,
-  CHIP_SX,
-} from "../../../components/accountmenu/ChipColorPickerUtils";
+import { useChipColors } from "../../../components/accountmenu/ChipColorPickerUtils";
 import "./OneCharging.scss";
 
 const OneCharging = () => {
@@ -35,17 +25,14 @@ const OneCharging = () => {
   const [sortBy, setSortBy] = useState("created_at");
   const [sortOrder, setSortOrder] = useState("asc");
   const [queryParams, setQueryParams] = useRememberQueryParams();
-  const showInactive = queryParams.status === "inactive";
   const search = queryParams.search ?? "";
   const debouncedSearch = useDebounce(search, 500);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedRow, setSelectedRow] = useState(null);
   const [syncConfirmOpen, setSyncConfirmOpen] = useState(false);
 
-  const currentStatus = showInactive ? "inactive" : "active";
-
   const { data, isFetching, error } = useGetOneChargingsQuery({
-    status: currentStatus,
+    status: "active",
     search: debouncedSearch,
     sorts: sortBy,
     page,
@@ -103,42 +90,13 @@ const OneCharging = () => {
     }
   };
 
-  const renderStatusChip = (status) => {
-    const isInactive = status === "inactive";
-    const chipId = isInactive ? "chip-inactive" : "chip-active";
-    return (
-      <Chip
-        label={getChipName(chipId)}
-        sx={{
-          ...CHIP_SX,
-          backgroundColor: getChipBg(chipId),
-          color: getChipTextColor(chipId),
-        }}
-      />
-    );
-  };
-
   const columns = [
     { key: "code", label: "Code", sortable: true },
     { key: "name", label: "Name", sortable: true },
-    {
-      key: "amount",
-      label: "Amount",
-      sortable: true,
-      render: (val) =>
-        val != null
-          ? `₱${Number(val).toLocaleString(undefined, {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            })}`
-          : "-",
-    },
-    {
-      key: "status",
-      label: "Status",
-      sortable: false,
-      render: (val) => renderStatusChip(val),
-    },
+    { key: "company_name", label: "Company", sortable: true },
+    { key: "business_unit_name", label: "Business Unit", sortable: true },
+    { key: "department_name", label: "Department", sortable: true },
+    { key: "location_name", label: "Location", sortable: true },
   ];
 
   return (
@@ -157,23 +115,11 @@ const OneCharging = () => {
           />
         }
         actions={
-          <>
-            <ArchivedButton
-              active={showInactive}
-              onClick={() => {
-                setQueryParams(
-                  { status: showInactive ? "active" : "inactive" },
-                  { retain: true },
-                );
-                setPage(1);
-              }}
-            />
-            <TableSearchField
-              value={search}
-              onChange={handleSearch}
-              placeholder="Search one charging..."
-            />
-          </>
+          <TableSearchField
+            value={search}
+            onChange={handleSearch}
+            placeholder="Search one charging..."
+          />
         }
         pagination={
           <TablePagination
