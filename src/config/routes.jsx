@@ -9,8 +9,12 @@ import Users from "../pages/usermanagement/users/Users.jsx";
 import Roles from "../pages/usermanagement/roles/Roles.jsx";
 import Permissions from "../pages/usermanagement/permissions/Permissions.jsx";
 import ScoreGrading from "../pages/score-grading/ScoreGrading.jsx";
+import ChecklistType from "../pages/checklist-type/ChecklistType.jsx";
 import OneCharging from "../pages/one-rdf/one-charging/OneCharging.jsx";
 import OneUser from "../pages/one-rdf/one-user/OneUser.jsx";
+import QAChecklist from "../pages/qa-checklist/QAChecklist.jsx";
+import QADashboard from "../pages/qa-dashboard/QADashboard.jsx";
+import GracePeriodSetting from "../pages/grade-period/GracePeriodSetting.jsx";
 
 export const ROUTES = [
   {
@@ -82,6 +86,31 @@ export const ROUTES = [
           permission: MODULES.MASTERLIST.children.SCOREGRADING.permissionId,
         },
       },
+      {
+        id: "MASTERLIST.CHECKLISTTYPE",
+        path: `${MODULES.MASTERLIST.path}/${MODULES.MASTERLIST.children.CHECKLISTTYPE.path}`,
+        element: <ChecklistType />,
+        handle: {
+          permission: MODULES.MASTERLIST.children.CHECKLISTTYPE.permissionId,
+        },
+      },
+      {
+        id: "MASTERLIST.QACHECKLIST",
+        path: `${MODULES.MASTERLIST.path}/${MODULES.MASTERLIST.children.QACHECKLIST.path}`,
+        element: <QAChecklist />,
+        handle: {
+          permission: MODULES.MASTERLIST.children.QACHECKLIST.permissionId,
+        },
+      },
+      {
+        id: "MASTERLIST.GRACEPERIODSETTING",
+        path: `${MODULES.MASTERLIST.path}/${MODULES.MASTERLIST.children.GRACEPERIODSETTING.path}`,
+        element: <GracePeriodSetting />,
+        handle: {
+          permission:
+            MODULES.MASTERLIST.children.GRACEPERIODSETTING.permissionId,
+        },
+      },
 
       {
         id: "ONERDF.ONECHARGING",
@@ -98,6 +127,13 @@ export const ROUTES = [
         handle: {
           permission: MODULES.ONERDF.children.ONEUSER.permissionId,
         },
+      },
+
+      {
+        id: "QADASHBOARD",
+        path: MODULES.QADASHBOARD.path,
+        element: <QADashboard />,
+        handle: { permission: MODULES.QADASHBOARD.permissionId },
       },
     ],
   },

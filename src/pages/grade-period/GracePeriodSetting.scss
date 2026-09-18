@@ -1,0 +1,51 @@
+@use "../../styles/colors" as *;
+
+.gps {
+  &__days-cell {
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: $text-primary;
+
+    [data-theme="dark"] & {
+      color: rgba(255, 255, 255, 0.85);
+    }
+  }
+
+  &__created-by-cell {
+    font-size: 0.78rem;
+    color: $text-muted;
+
+    [data-theme="dark"] & {
+      color: rgba(255, 255, 255, 0.5);
+    }
+  }
+
+  &__date-cell {
+    font-size: 0.78rem;
+    color: $text-muted;
+    white-space: nowrap;
+
+    [data-theme="dark"] & {
+      color: rgba(255, 255, 255, 0.5);
+    }
+  }
+
+  // Scoped border on the shared RowMenu's kebab trigger for this page
+  // only (Grace Period), applied directly via className — no extra
+  // wrapper element, so table row layout/dividers stay untouched.
+  &__row-menu-btn {
+    border: 1.5px solid $border-color;
+
+    &:hover {
+      border-color: $primary-main;
+    }
+
+    [data-theme="dark"] & {
+      border-color: rgba(255, 255, 255, 0.14);
+
+      &:hover {
+        border-color: $secondary-main;
+      }
+    }
+  }
+}

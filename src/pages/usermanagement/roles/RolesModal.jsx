@@ -56,6 +56,9 @@ const buildPermissionGroups = (permissions) => {
   }));
 };
 
+const getAllPermissionValues = (groups) =>
+  (groups ?? []).flatMap((group) => group.permissions.map((p) => p.value));
+
 const SkeletonLoader = () => (
   <div className="rm__skeleton-wrap">
     <div className="rm__skeleton-group">
@@ -84,10 +87,22 @@ const PermissionsChecklist = ({
   readOnly = false,
   isLoading = false,
 }) => {
+  const allValues = useMemo(() => getAllPermissionValues(groups), [groups]);
+
+  const isAllSelected =
+    allValues.length > 0 && allValues.every((v) => value.includes(v));
+  const isIndeterminate =
+    !isAllSelected && allValues.some((v) => value.includes(v));
+
   const handleToggle = (perm) => {
     if (readOnly) return;
     const already = value.includes(perm);
     onChange(already ? value.filter((v) => v !== perm) : [...value, perm]);
+  };
+
+  const handleToggleAll = () => {
+    if (readOnly) return;
+    onChange(isAllSelected ? [] : allValues);
   };
 
   if (isLoading) {
@@ -108,29 +123,70 @@ const PermissionsChecklist = ({
 
   return (
     <div className={`rm__perm-wrap${error ? " rm__perm-wrap--error" : ""}`}>
-      {groups.map((group) => (
-        <div key={group.module} className="rm__perm-group">
-          <p className="rm__perm-group-label">{group.module}</p>
-          <div className="rm__perm-options">
-            {group.permissions.map((perm) => {
-              const checked = value.includes(perm.value);
-              return (
-                <div
-                  key={perm.value}
-                  className={`rm__perm-option${checked ? " rm__perm-option--selected" : ""}${
-                    readOnly ? " rm__perm-option--readonly" : ""
-                  }`}
-                  onClick={() => handleToggle(perm.value)}>
-                  <span
-                    className={`rm__ac-checkbox${checked ? " rm__ac-checkbox--checked" : ""}`}
-                  />
-                  {perm.label}
-                </div>
-              );
-            })}
+      <div
+        className={`rm__perm-select-all${readOnly ? " rm__perm-select-all--readonly" : ""}`}
+        onClick={handleToggleAll}>
+        <span
+          className={`rm__ac-checkbox${
+            isAllSelected ? " rm__ac-checkbox--checked" : ""
+          }${isIndeterminate ? " rm__ac-checkbox--indeterminate" : ""}`}
+        />
+        Select All
+      </div>
+      {groups.map((group) => {
+        const groupValues = group.permissions.map((p) => p.value);
+        const isGroupAllSelected =
+          groupValues.length > 0 && groupValues.every((v) => value.includes(v));
+        const isGroupIndeterminate =
+          !isGroupAllSelected && groupValues.some((v) => value.includes(v));
+
+        const handleToggleGroup = () => {
+          if (readOnly) return;
+          if (isGroupAllSelected) {
+            onChange(value.filter((v) => !groupValues.includes(v)));
+          } else {
+            onChange([...new Set([...value, ...groupValues])]);
+          }
+        };
+
+        return (
+          <div key={group.module} className="rm__perm-group">
+            <div className="rm__perm-group-header">
+              <p className="rm__perm-group-label">{group.module}</p>
+              <div
+                className={`rm__perm-group-select-all${
+                  readOnly ? " rm__perm-group-select-all--readonly" : ""
+                }`}
+                onClick={handleToggleGroup}>
+                <span
+                  className={`rm__ac-checkbox${
+                    isGroupAllSelected ? " rm__ac-checkbox--checked" : ""
+                  }${isGroupIndeterminate ? " rm__ac-checkbox--indeterminate" : ""}`}
+                />
+                Select All
+              </div>
+            </div>
+            <div className="rm__perm-options">
+              {group.permissions.map((perm) => {
+                const checked = value.includes(perm.value);
+                return (
+                  <div
+                    key={perm.value}
+                    className={`rm__perm-option${checked ? " rm__perm-option--selected" : ""}${
+                      readOnly ? " rm__perm-option--readonly" : ""
+                    }`}
+                    onClick={() => handleToggle(perm.value)}>
+                    <span
+                      className={`rm__ac-checkbox${checked ? " rm__ac-checkbox--checked" : ""}`}
+                    />
+                    {perm.label}
+                  </div>
+                );
+              })}
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 };
@@ -151,7 +207,7 @@ const RolesModal = ({ open, onClose, selectedId = null }) => {
   );
 
   const { data: permissionsData, isFetching: permissionsLoading } =
-    useGetPermissionsQuery(undefined, { skip: !open });
+    useGetPermissionsQuery({ per_page: 1000 }, { skip: !open });
 
   const allPermissions = useMemo(
     () => permissionsData?.data?.data ?? permissionsData?.data ?? [],

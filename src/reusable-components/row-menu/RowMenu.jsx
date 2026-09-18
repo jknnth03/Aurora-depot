@@ -3,14 +3,18 @@ import MoreHorizIcon from "@mui/icons-material/MoreHoriz";
 import ArchiveIcon from "@mui/icons-material/Archive";
 import UnarchiveIcon from "@mui/icons-material/Unarchive";
 import LockResetIcon from "@mui/icons-material/LockReset";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import "./RowMenu.scss";
 
 const RowMenu = ({
   onArchive,
   onRestore,
   onResetPassword,
+  onActivate,
   isArchived = false,
+  isActive = false,
   hideArchive = false,
+  className = "",
 }) => {
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState({ top: 0, left: 0 });
@@ -38,7 +42,9 @@ const RowMenu = ({
 
   return (
     <div className="row-menu" ref={triggerRef}>
-      <button className="row-menu__trigger" onClick={handleOpen}>
+      <button
+        className={`row-menu__trigger${className ? ` ${className}` : ""}`}
+        onClick={handleOpen}>
         <MoreHorizIcon fontSize="small" />
       </button>
 
@@ -56,6 +62,23 @@ const RowMenu = ({
               }}>
               <LockResetIcon sx={{ fontSize: "0.95rem" }} />
               Reset Password
+            </button>
+          )}
+
+          {onActivate && (
+            <button
+              className={`row-menu__item row-menu__item--primary${
+                isActive ? " row-menu__item--disabled" : ""
+              }`}
+              disabled={isActive}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (isActive) return;
+                setOpen(false);
+                onActivate?.();
+              }}>
+              <CheckCircleIcon sx={{ fontSize: "0.95rem" }} />
+              {isActive ? "Already Active" : "Activate"}
             </button>
           )}
 

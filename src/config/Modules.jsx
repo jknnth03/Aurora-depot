@@ -7,9 +7,13 @@ import PlaceIcon from "@mui/icons-material/Place";
 import ListAltIcon from "@mui/icons-material/ListAlt";
 import MapIcon from "@mui/icons-material/Map";
 import GradeIcon from "@mui/icons-material/Grade";
+import ChecklistIcon from "@mui/icons-material/Checklist";
 import CloudSyncIcon from "@mui/icons-material/CloudSync";
 import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
 import PeopleAltIcon from "@mui/icons-material/PeopleAlt";
+import FactCheckIcon from "@mui/icons-material/FactCheck";
+import AssessmentIcon from "@mui/icons-material/Assessment";
+import EventBusyIcon from "@mui/icons-material/EventBusy";
 
 export const iconStyles = {
   main: { fontSize: "22px" },
@@ -73,10 +77,6 @@ export const MODULES = {
       PERMISSIONS: {
         name: "Permissions",
         permissionId: "USERMANAGEMENT.PERMISSIONS",
-        // NOTE: backend has no "permissions.*" permission seeded yet (no
-        // GET /permissions endpoint confirmed either — see permissionsApi.js).
-        // Set to null so this stays visible in the sidebar for now. Swap to
-        // the real key (e.g. "permissions.view") once backend adds it.
         permissionKey: null,
         displayName: "Permissions",
         path: "permissions",
@@ -117,6 +117,30 @@ export const MODULES = {
         path: "score-grading",
         icon: <GradeIcon sx={iconStyles.child} />,
       },
+      CHECKLISTTYPE: {
+        name: "Checklist Type",
+        permissionId: "MASTERLIST.CHECKLISTTYPE",
+        permissionKey: "checklist_type.view",
+        displayName: "Checklist Type",
+        path: "checklist-type",
+        icon: <ChecklistIcon sx={iconStyles.child} />,
+      },
+      QACHECKLIST: {
+        name: "QA Checklist",
+        permissionId: "MASTERLIST.QACHECKLIST",
+        permissionKey: "checklist.index",
+        displayName: "QA Checklist",
+        path: "qa-checklist",
+        icon: <FactCheckIcon sx={iconStyles.child} />,
+      },
+      GRACEPERIODSETTING: {
+        name: "Grace Period Setting",
+        permissionId: "MASTERLIST.GRACEPERIODSETTING",
+        permissionKey: "late-grace-day-setting.view",
+        displayName: "Grace Period Setting",
+        path: "grace-period-setting",
+        icon: <EventBusyIcon sx={iconStyles.child} />,
+      },
     },
   },
 
@@ -145,5 +169,15 @@ export const MODULES = {
         icon: <PeopleAltIcon sx={iconStyles.child} />,
       },
     },
+  },
+
+  QADASHBOARD: {
+    name: "QA Dashboard",
+    permissionId: "QADASHBOARD",
+    permissionKey: "my-checklist.view",
+    displayName: "QA Dashboard",
+    path: "/qa-dashboard",
+    icon: <AssessmentIcon sx={iconStyles.main} />,
+    children: null,
   },
 };
