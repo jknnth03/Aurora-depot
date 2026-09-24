@@ -1,0 +1,229 @@
+@use "../../styles/colors" as *;
+
+$accent: #e66414;
+$accent-mid: #f5a96b;
+$text-primary: #2c1a0e;
+$text-secondary: #6b4c35;
+$text-muted: #a07858;
+$border: #f0ddd0;
+$bg-paper: #ffffff;
+
+.agd__paper {
+  border-radius: 14px !important;
+  background: $bg-paper !important;
+  box-shadow: 0 12px 48px rgba(230, 100, 20, 0.14) !important;
+  overflow: hidden !important;
+  font-family: "Poppins", sans-serif !important;
+
+  [data-theme="dark"] & {
+    background: $bg-main !important;
+    box-shadow: 0 12px 48px rgba(0, 0, 0, 0.4) !important;
+  }
+}
+
+.agd__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  border-bottom: 1px solid $border;
+  background: $bg-paper;
+
+  [data-theme="dark"] & {
+    background: $bg-main;
+    border-bottom-color: rgba(255, 255, 255, 0.08);
+  }
+}
+
+.agd__header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.agd__header-icon {
+  color: $accent !important;
+  font-size: 22px !important;
+
+  [data-theme="dark"] & {
+    color: var(--palette-primary) !important;
+  }
+}
+
+.agd__header-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: $text-primary;
+  font-family: "Poppins", sans-serif;
+
+  [data-theme="dark"] & {
+    color: rgba(255, 255, 255, 0.9);
+  }
+}
+
+.agd__close {
+  color: $text-muted !important;
+  transition: color 0.18s;
+
+  &:hover {
+    color: $accent !important;
+
+    [data-theme="dark"] & {
+      color: var(--palette-primary) !important;
+    }
+  }
+
+  [data-theme="dark"] & {
+    color: rgba(255, 255, 255, 0.4) !important;
+  }
+}
+
+.agd__content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 20px !important;
+  background: #faf6f2;
+
+  [data-theme="dark"] & {
+    background: $bg-main;
+  }
+}
+
+.agd__stage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 340px;
+  padding: 10px;
+  background: #fff;
+  border: 1px solid $border;
+  border-radius: 10px;
+
+  [data-theme="dark"] & {
+    background: rgba(255, 255, 255, 0.04);
+    border-color: rgba(255, 255, 255, 0.08);
+  }
+}
+
+.agd__image {
+  max-width: 100%;
+  max-height: 60vh;
+  object-fit: contain;
+  border-radius: 6px;
+}
+
+.agd__state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 30px 0;
+  color: $text-muted;
+  font-family: "Poppins", sans-serif;
+
+  p {
+    margin: 0;
+    font-size: 0.8rem;
+  }
+
+  [data-theme="dark"] & {
+    color: rgba(255, 255, 255, 0.45);
+  }
+}
+
+.agd__caption {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  text-align: center;
+  font-family: "Poppins", sans-serif;
+}
+
+.agd__caption-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: $text-primary;
+  overflow-wrap: anywhere;
+
+  [data-theme="dark"] & {
+    color: rgba(255, 255, 255, 0.85);
+  }
+}
+
+.agd__caption-name {
+  font-size: 0.7rem;
+  color: $text-muted;
+  overflow-wrap: anywhere;
+
+  [data-theme="dark"] & {
+    color: rgba(255, 255, 255, 0.4);
+  }
+}
+
+.agd__footer {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 12px 20px !important;
+  border-top: 1px solid $border;
+  background: $bg-paper;
+
+  [data-theme="dark"] & {
+    background: $bg-main;
+    border-top-color: rgba(255, 255, 255, 0.08);
+  }
+}
+
+.agd__counter {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: $text-secondary;
+  font-family: "Poppins", sans-serif;
+
+  [data-theme="dark"] & {
+    color: rgba(255, 255, 255, 0.65);
+  }
+}
+
+.agd__btn-nav {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 96px;
+  padding: 7px 16px;
+  border: 1.5px solid $accent;
+  background: $accent;
+  border-radius: 8px;
+  font-family: "Poppins", sans-serif;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #fff;
+  cursor: pointer;
+  transition:
+    background 0.18s,
+    border-color 0.18s,
+    opacity 0.18s;
+
+  &:hover:not(:disabled) {
+    background: #cf5710;
+    border-color: #cf5710;
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  [data-theme="dark"] & {
+    background: var(--palette-primary);
+    border-color: var(--palette-primary);
+
+    &:hover:not(:disabled) {
+      filter: brightness(1.1);
+    }
+  }
+}

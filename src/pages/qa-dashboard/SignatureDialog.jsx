@@ -1,0 +1,127 @@
+import { useRef, useState } from "react";
+import Dialog from "@mui/material/Dialog";
+import DialogContent from "@mui/material/DialogContent";
+import DialogActions from "@mui/material/DialogActions";
+import IconButton from "@mui/material/IconButton";
+import CircularProgress from "@mui/material/CircularProgress";
+import CloseIcon from "@mui/icons-material/Close";
+import DrawIcon from "@mui/icons-material/Draw";
+import DeleteOutlineIcon from "@mui/icons-material/DeleteOutlineOutlined";
+import CheckIcon from "@mui/icons-material/Check";
+import SignatureCanvas from "react-signature-canvas";
+// TODO: adjust this import path to match your project structure
+import { useSignWeeklyRecordMutation } from "../../features/api/qa-dashboard/qaDashboardApi";
+import "./SignatureDialog.scss";
+
+const SignatureDialog = ({
+  open,
+  onClose,
+  checklistId,
+  recordId,
+  signerName,
+  onSignatureSaved,
+}) => {
+  const sigCanvas = useRef(null);
+  const [isEmpty, setIsEmpty] = useState(true);
+  const [signWeeklyRecord, { isLoading }] = useSignWeeklyRecordMutation();
+
+  const clearCanvas = () => {
+    sigCanvas.current?.clear();
+    setIsEmpty(true);
+  };
+
+  const handleClose = () => {
+    setIsEmpty(true);
+    sigCanvas.current?.clear();
+    onClose();
+  };
+
+  const handleSubmit = async () => {
+    if (sigCanvas.current?.isEmpty() || !checklistId || !recordId) return;
+    const dataURL = sigCanvas.current?.toDataURL("image/png");
+    const blob = await (await fetch(dataURL)).blob();
+    const formData = new FormData();
+    formData.append("signature", blob, "signature.png");
+
+    try {
+      const result = await signWeeklyRecord({
+        id: checklistId,
+        recordId,
+        body: formData,
+      }).unwrap();
+      if (onSignatureSaved)
+        onSignatureSaved(result?.data?.signature_url ?? dataURL);
+      clearCanvas();
+    } catch (err) {
+      console.error("Failed to submit signature:", err);
+    }
+  };
+
+  return (
+    <Dialog
+      open={open}
+      onClose={handleClose}
+      maxWidth="sm"
+      fullWidth
+      PaperProps={{ className: "sig__paper" }}>
+      <div className="sig__header">
+        <div className="sig__header-left">
+          <DrawIcon className="sig__header-icon" />
+          <span className="sig__header-title">Add Signature</span>
+        </div>
+        <IconButton size="small" className="sig__close" onClick={handleClose}>
+          <CloseIcon fontSize="small" />
+        </IconButton>
+      </div>
+
+      <DialogContent className="sig__content">
+        <p className="sig__instruction">
+          Sign inside the box below using your mouse or finger.
+        </p>
+        <div className="sig__canvas-wrapper">
+          <SignatureCanvas
+            ref={sigCanvas}
+            canvasProps={{
+              width: 560,
+              height: 220,
+              className: "sig__canvas",
+              style: { touchAction: "none", width: "100%", height: "auto" },
+            }}
+            onEnd={() => setIsEmpty(sigCanvas.current?.isEmpty() ?? true)}
+          />
+          <span className="sig__canvas-label">{signerName || "Signature"}</span>
+          <button
+            className="sig__clear-btn"
+            onClick={clearCanvas}
+            type="button">
+            <DeleteOutlineIcon sx={{ fontSize: 16 }} />
+            <span>Clear</span>
+          </button>
+        </div>
+        {signerName && <p className="sig__signer-name">{signerName}</p>}
+      </DialogContent>
+
+      <DialogActions className="sig__footer">
+        <button className="sig__btn sig__btn--cancel" onClick={handleClose}>
+          Cancel
+        </button>
+        <button
+          className="sig__btn sig__btn--submit"
+          onClick={handleSubmit}
+          disabled={isEmpty || isLoading}
+          type="button">
+          {isLoading ? (
+            <CircularProgress size={14} sx={{ color: "#fff" }} />
+          ) : (
+            <>
+              <CheckIcon sx={{ fontSize: 15 }} />
+              <span>Add Signature</span>
+            </>
+          )}
+        </button>
+      </DialogActions>
+    </Dialog>
+  );
+};
+
+export default SignatureDialog;

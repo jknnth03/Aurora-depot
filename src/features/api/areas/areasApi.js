@@ -59,6 +59,24 @@ const extendedApi = apiSlice.injectEndpoints({
       }),
       providesTags: (result, error, id) => [{ type: "Area", id }],
     }),
+
+    getAreasForMyDepartment: builder.query({
+      query: ({ status, sorts, search, page, per_page } = {}) => ({
+        url: "areas/for-my-department",
+        method: "GET",
+        params: { status, sorts, search, page, per_page },
+      }),
+      providesTags: (result) =>
+        result?.data?.data
+          ? [
+              ...result.data.data.map((area) => ({
+                type: "Area",
+                id: area.id,
+              })),
+              { type: "Area", id: "FOR-MY-DEPARTMENT-LIST" },
+            ]
+          : [{ type: "Area", id: "FOR-MY-DEPARTMENT-LIST" }],
+    }),
   }),
 });
 
@@ -68,4 +86,5 @@ export const {
   useToggleArchiveAreaMutation,
   useGetAreasQuery,
   useGetAreaQuery,
+  useGetAreasForMyDepartmentQuery,
 } = extendedApi;

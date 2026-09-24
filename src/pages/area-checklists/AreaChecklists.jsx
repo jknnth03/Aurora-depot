@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useRememberQueryParams } from "../../hooks/useRememberQueryParams";
 import useDebounce from "../../hooks/useDebounce";
-import MapIcon from "@mui/icons-material/Map";
+import FactCheckIcon from "@mui/icons-material/FactCheck";
 import AddIcon from "@mui/icons-material/Add";
 import Chip from "@mui/material/Chip";
 import PageContainer from "../../reusable-components/page-container/PageContainer";
@@ -13,12 +13,12 @@ import {
   ArchivedButton,
 } from "../../reusable-components/table-search/TableSearch";
 import {
-  useGetAreasQuery,
-  useToggleArchiveAreaMutation,
-} from "../../features/api/areas/areasApi";
+  useGetAreaChecklistsQuery,
+  useToggleArchiveAreaChecklistMutation,
+} from "../../features/api/area-checklists/areaChecklistsApi";
 import ConfirmDialog from "../../reusable-components/confirm-dialog/ConfirmDialog";
 import RowMenu from "../../reusable-components/row-menu/RowMenu";
-import AreasModal from "./AreasModal";
+import AreaChecklistsModal from "./AreaChecklistsModal";
 import {
   getChipBg,
   getChipTextColor,
@@ -26,9 +26,9 @@ import {
   useChipColors,
   CHIP_SX,
 } from "../../components/accountmenu/ChipColorPickerUtils";
-import "./Areas.scss";
+import "./AreaChecklists.scss";
 
-const Areas = () => {
+const AreaChecklists = () => {
   useChipColors();
 
   const [page, setPage] = useState(1);
@@ -49,15 +49,15 @@ const Areas = () => {
 
   const currentStatus = showArchived ? "inactive" : "active";
 
-  const { data, isFetching, error } = useGetAreasQuery({
+  const { data, isFetching, error } = useGetAreaChecklistsQuery({
     status: currentStatus,
     search: debouncedSearch,
     sorts: sortBy,
     page,
     per_page: rowsPerPage,
   });
-  const [toggleArchiveArea, { isLoading: isArchiving }] =
-    useToggleArchiveAreaMutation();
+  const [toggleArchiveAreaChecklist, { isLoading: isArchiving }] =
+    useToggleArchiveAreaChecklistMutation();
 
   const is404 = error?.status === 404;
   const tableData = is404 ? [] : (data?.data?.data ?? []);
@@ -83,10 +83,11 @@ const Areas = () => {
   };
   const handleConfirmRestore = async () => {
     try {
-      await toggleArchiveArea(toRestore.id).unwrap();
-      window.__snackbar__?.enqueueSnackbar("Area restored successfully.", {
-        variant: "success",
-      });
+      await toggleArchiveAreaChecklist(toRestore.id).unwrap();
+      window.__snackbar__?.enqueueSnackbar(
+        "Area checklist restored successfully.",
+        { variant: "success" },
+      );
       setRestoreConfirmOpen(false);
       setToRestore(null);
       resetAfterRestore();
@@ -113,27 +114,17 @@ const Areas = () => {
   };
   const handleConfirmArchive = async () => {
     try {
-      await toggleArchiveArea(toArchive.id).unwrap();
-      window.__snackbar__?.enqueueSnackbar("Area archived successfully.", {
-        variant: "success",
-      });
+      await toggleArchiveAreaChecklist(toArchive.id).unwrap();
+      window.__snackbar__?.enqueueSnackbar(
+        "Area checklist archived successfully.",
+        { variant: "success" },
+      );
       setConfirmOpen(false);
       setToArchive(null);
       resetAfterArchive();
     } catch (err) {
       console.error("Archive failed:", err);
     }
-  };
-
-  const getAreaHeadName = (areaHead) => {
-    if (!areaHead) return "-";
-    const parts = [
-      areaHead.first_name,
-      areaHead.middle_name,
-      areaHead.last_name,
-      areaHead.suffix,
-    ].filter(Boolean);
-    return parts.join(" ");
   };
 
   const renderStatusChip = (isArchivedRow) => {
@@ -151,21 +142,23 @@ const Areas = () => {
   };
 
   const columns = [
-    { key: "code", label: "Code", sortable: true },
-    { key: "name", label: "Name", sortable: true },
     {
-      key: "department",
-      label: "Department",
+      key: "area",
+      label: "Area",
       sortable: false,
       render: (val) => (
-        <span className="areas__department-cell">{val?.name ?? "-"}</span>
+        <span className="area-checklists__area-cell">{val?.name ?? "-"}</span>
       ),
     },
     {
-      key: "area_head",
-      label: "Area Head",
+      key: "checklist",
+      label: "Checklist",
       sortable: false,
-      render: (val) => getAreaHeadName(val),
+      render: (val) => (
+        <span className="area-checklists__checklist-cell">
+          {val?.name ?? "-"}
+        </span>
+      ),
     },
     {
       key: "is_archived",
@@ -178,13 +171,13 @@ const Areas = () => {
   return (
     <>
       <PageContainer
-        title="Areas"
-        titleIcon={<MapIcon />}
+        title="Area Checklists"
+        titleIcon={<FactCheckIcon />}
         isEmpty={!isFetching && (tableData.length === 0 || is404)}
         titleAction={
           <UniversalButton
-            label="Add Area"
-            tooltip="Click this button to add a new area"
+            label="Add Area Checklist"
+            tooltip="Click this button to add a new area checklist"
             icon={<AddIcon />}
             onClick={handleAdd}
           />
@@ -204,7 +197,7 @@ const Areas = () => {
             <TableSearchField
               value={search}
               onChange={handleSearch}
-              placeholder="Search areas..."
+              placeholder="Search area checklists..."
             />
           </>
         }
@@ -235,7 +228,7 @@ const Areas = () => {
         />
       </PageContainer>
 
-      <AreasModal
+      <AreaChecklistsModal
         open={modalOpen}
         onClose={handleClose}
         selectedId={selectedId}
@@ -249,8 +242,8 @@ const Areas = () => {
         }}
         onConfirm={handleConfirmArchive}
         isLoading={isArchiving}
-        title="Archive Area"
-        message={`Are you sure you want to archive "${toArchive?.name}"? This action will set the area as inactive.`}
+        title="Archive Area Checklist"
+        message={`Are you sure you want to archive this area checklist? This action will set it as inactive.`}
       />
 
       <ConfirmDialog
@@ -261,11 +254,11 @@ const Areas = () => {
         }}
         onConfirm={handleConfirmRestore}
         isLoading={isArchiving}
-        title="Restore Area"
-        message={`Are you sure you want to restore "${toRestore?.name}"? This will set it back to active.`}
+        title="Restore Area Checklist"
+        message={`Are you sure you want to restore this area checklist? This will set it back to active.`}
       />
     </>
   );
 };
 
-export default Areas;
+export default AreaChecklists;

@@ -13,7 +13,7 @@
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
     "@hookform/resolvers": "^5.4.0",
-    "@mui/icons-material": "^9.1.1",
+    "@mui/icons-material": "^9.4.0",
     "@mui/material": "^9.1.2",
     "@reduxjs/toolkit": "^2.12.0",
     "dayjs": "^1.11.23",
@@ -24,6 +24,7 @@
     "react-hook-form": "^7.80.0",
     "react-redux": "^9.3.0",
     "react-router": "^8.1.0",
+    "react-signature-canvas": "^1.1.0-alpha.2",
     "yup": "^1.7.1"
   },
   "devDependencies": {

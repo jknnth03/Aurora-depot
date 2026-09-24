@@ -1,15 +1,21 @@
 export const getCompletedWeeksCount = (weeks = []) =>
-  weeks.filter((w) => w.status === "completed" || w.status === "skipped")
-    .length;
+  weeks.filter(
+    (w) =>
+      w.status === "completed" ||
+      w.status === "skipped" ||
+      w.status === "backlogged",
+  ).length;
 
 export const getDerivedChecklistStatus = (weeks = []) => {
   const completedCount = weeks.filter((w) => w.status === "completed").length;
   const skippedCount = weeks.filter((w) => w.status === "skipped").length;
+  const backloggedCount = weeks.filter((w) => w.status === "backlogged").length;
   const notStartedCount = weeks.filter(
     (w) => w.status === "not_started",
   ).length;
 
-  if (completedCount === 0 && skippedCount === 0) return "Pending";
+  if (completedCount === 0 && skippedCount === 0 && backloggedCount === 0)
+    return "Pending";
   if (notStartedCount === 0) return "Completed";
   return "On Going";
 };

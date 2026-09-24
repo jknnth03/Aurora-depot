@@ -1,7 +1,7 @@
 @use "../../styles/colors" as *;
 
-.locations {
-  &__address-cell {
+.area-checklists {
+  &__area-cell {
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
@@ -15,7 +15,7 @@
     }
   }
 
-  &__description-cell {
+  &__checklist-cell {
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
@@ -29,7 +29,7 @@
     }
   }
 
-  &__location-icon {
+  &__area-checklist-icon {
     color: $primary-main;
 
     .MuiSvgIcon-root {

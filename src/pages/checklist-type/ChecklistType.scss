@@ -1,22 +1,16 @@
 @use "../../styles/colors" as *;
 
 .checklist-type {
-  &__name-cell {
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-    font-size: 0.78rem;
-    color: $text-muted;
-    max-width: 320px;
-
-    [data-theme="dark"] & {
-      color: rgba(255, 255, 255, 0.5);
-    }
+  &__department-cell {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    width: 100%;
+    padding-left: 16px;
   }
 
-  &__icon {
-    color: $primary-main;
+  &__department-icon {
+    color: $primary-main !important;
 
     .MuiSvgIcon-root {
       color: $primary-main !important;
@@ -27,7 +21,7 @@
     }
 
     [data-theme="dark"] & {
-      color: $secondary-main;
+      color: $secondary-main !important;
 
       .MuiSvgIcon-root {
         color: $secondary-main !important;

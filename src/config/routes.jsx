@@ -1,10 +1,11 @@
-import { MODULES } from "./modules.jsx";
+import { MODULES } from "./Modules.jsx";
 import PrivateRoutes from "./PrivateRoutes.jsx";
 import PublicRoute from "./PublicRoutes.jsx";
 import Dashboard from "../pages/dashboard/Dashboard.jsx";
 import Login from "../pages/login/Login.jsx";
-import Locations from "../pages/locations/Locations.jsx";
+import Departments from "../pages/departments/Departments.jsx";
 import AreaManagement from "../pages/areas/Areas.jsx";
+import AreaChecklists from "../pages/area-checklists/AreaChecklists.jsx";
 import Users from "../pages/usermanagement/users/Users.jsx";
 import Roles from "../pages/usermanagement/roles/Roles.jsx";
 import Permissions from "../pages/usermanagement/permissions/Permissions.jsx";
@@ -15,6 +16,7 @@ import OneUser from "../pages/one-rdf/one-user/OneUser.jsx";
 import QAChecklist from "../pages/qa-checklist/QAChecklist.jsx";
 import QADashboard from "../pages/qa-dashboard/QADashboard.jsx";
 import GracePeriodSetting from "../pages/grade-period/GracePeriodSetting.jsx";
+import Guidelines from "../pages/guidelines/Guidelines.jsx";
 
 export const ROUTES = [
   {
@@ -63,11 +65,11 @@ export const ROUTES = [
       },
 
       {
-        id: "MASTERLIST.LOCATIONS",
-        path: `${MODULES.MASTERLIST.path}/${MODULES.MASTERLIST.children.LOCATIONS.path}`,
-        element: <Locations />,
+        id: "MASTERLIST.DEPARTMENTS",
+        path: `${MODULES.MASTERLIST.path}/${MODULES.MASTERLIST.children.DEPARTMENTS.path}`,
+        element: <Departments />,
         handle: {
-          permission: MODULES.MASTERLIST.children.LOCATIONS.permissionId,
+          permission: MODULES.MASTERLIST.children.DEPARTMENTS.permissionId,
         },
       },
       {
@@ -76,6 +78,14 @@ export const ROUTES = [
         element: <AreaManagement />,
         handle: {
           permission: MODULES.MASTERLIST.children.AREAS.permissionId,
+        },
+      },
+      {
+        id: "MASTERLIST.AREACHECKLISTS",
+        path: `${MODULES.MASTERLIST.path}/${MODULES.MASTERLIST.children.AREACHECKLISTS.path}`,
+        element: <AreaChecklists />,
+        handle: {
+          permission: MODULES.MASTERLIST.children.AREACHECKLISTS.permissionId,
         },
       },
       {
@@ -109,6 +119,14 @@ export const ROUTES = [
         handle: {
           permission:
             MODULES.MASTERLIST.children.GRACEPERIODSETTING.permissionId,
+        },
+      },
+      {
+        id: "MASTERLIST.GUIDELINES",
+        path: `${MODULES.MASTERLIST.path}/${MODULES.MASTERLIST.children.GUIDELINES.path}`,
+        element: <Guidelines />,
+        handle: {
+          permission: MODULES.MASTERLIST.children.GUIDELINES.permissionId,
         },
       },
 

@@ -7,10 +7,10 @@ import Button from "@mui/material/Button";
 import IconButton from "@mui/material/IconButton";
 import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
+import CircularProgress from "@mui/material/CircularProgress";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import BlockIcon from "@mui/icons-material/Block";
-import RestoreIcon from "@mui/icons-material/Restore";
 import MoreHorizIcon from "@mui/icons-material/MoreHoriz";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import ChecklistIcon from "@mui/icons-material/Checklist";
@@ -22,29 +22,32 @@ import {
 import { isWeekActionable } from "./qaWeekUtils";
 import QAAnswerModal from "./QAAnswerModal";
 import QAWeekScoreDialog from "./QAWeekScoreDialog";
-import ConfirmDialog from "../../reusable-components/confirm-dialog/ConfirmDialog";
-import {
-  useSkipChecklistMutation,
-  useUndoSkipChecklistMutation,
-} from "../../features/api/qa-dashboard/qaDashboardApi";
+import { useSkipChecklistMutation } from "../../features/api/qa-dashboard/qaDashboardApi";
 import "./QADashboardModal.scss";
 
 const STATUS_CHIP_MAP = {
   completed: "chip-completed",
   skipped: "chip-rejected",
+  backlogged: "chip-rejected",
   not_started: "chip-pending",
+  in_progress: "chip-ongoing",
 };
 
 const STATUS_LABEL_MAP = {
   completed: "Completed",
   skipped: "Skipped",
+  backlogged: "Backlogged",
   not_started: "Not Started",
+  in_progress: "Save as Draft",
 };
 
 const getDoneOn = (weeklyRecord) => {
   if (!weeklyRecord?.updated_at) return "—";
+
   const date = new Date(weeklyRecord.updated_at);
+
   if (isNaN(date)) return "—";
+
   return date.toLocaleDateString("en-PH", {
     month: "short",
     day: "numeric",
@@ -52,24 +55,13 @@ const getDoneOn = (weeklyRecord) => {
   });
 };
 
-const getTimeline = (weeklyRecord) => {
-  if (!weeklyRecord?.time_in) return "—";
-  const dateLabel = weeklyRecord.time_in_date
-    ? new Date(weeklyRecord.time_in_date).toLocaleDateString("en-PH", {
-        month: "short",
-        day: "numeric",
-      })
-    : "";
-  const timeRange = weeklyRecord.time_out
-    ? `${weeklyRecord.time_in} - ${weeklyRecord.time_out}`
-    : weeklyRecord.time_in;
-  return dateLabel ? `${dateLabel}, ${timeRange}` : timeRange;
-};
-
 const StatusChip = ({ status }) => {
   useChipColors();
+
   const chipId = STATUS_CHIP_MAP[status] ?? null;
+
   if (!chipId) return <span className="qdm__dash">—</span>;
+
   return (
     <span
       className="qdm__chip"
@@ -85,20 +77,28 @@ const StatusChip = ({ status }) => {
 const findWeeklyRecord = (weeklyRecords, weeklyRecordId) =>
   (weeklyRecords ?? []).find((record) => record.id === weeklyRecordId) ?? null;
 
+const hasAvailableActions = (week, actionable) => {
+  if (week.status === "not_started") return actionable;
+  if (week.status === "in_progress") return true;
+  if (week.status === "completed") return true;
+  return false;
+};
+
 const RowActionMenu = ({
   week,
   weeklyRecord,
   actionable,
   onAnswer,
+  onContinue,
   onSkip,
-  onUndoSkip,
   onView,
   onShowChecklist,
 }) => {
   const [anchor, setAnchor] = useState(null);
+
   const close = () => setAnchor(null);
 
-  if (week.status === "not_started" && !actionable) {
+  if (!hasAvailableActions(week, actionable)) {
     return <span className="qdm__dash">—</span>;
   }
 
@@ -145,16 +145,16 @@ const RowActionMenu = ({
             </MenuItem>,
           ]}
 
-        {week.status === "skipped" && (
+        {week.status === "in_progress" && (
           <MenuItem
-            key="undo-skip"
+            key="continue"
             className="qdm__menu-item"
             onClick={() => {
               close();
-              onUndoSkip();
+              onContinue(weeklyRecord);
             }}>
-            <RestoreIcon className="qdm__menu-icon" />
-            Undo Skip
+            <PlayArrowIcon className="qdm__menu-icon" />
+            Continue
           </MenuItem>
         )}
 
@@ -188,30 +188,34 @@ const RowActionMenu = ({
 const QADashboardModal = ({ open, checklistData, onClose }) => {
   const [answerModalOpen, setAnswerModalOpen] = useState(false);
   const [answeringWeek, setAnsweringWeek] = useState(null);
+  const [answeringWeeklyRecordId, setAnsweringWeeklyRecordId] = useState(null);
   const [scoreDialogData, setScoreDialogData] = useState(null);
   const [checklistViewData, setChecklistViewData] = useState(null);
   const [confirmSkipOpen, setConfirmSkipOpen] = useState(false);
-  const [confirmUndoSkipOpen, setConfirmUndoSkipOpen] = useState(false);
   const [skipReason, setSkipReason] = useState("");
   const [skipReasonError, setSkipReasonError] = useState(false);
   const [skippingWeek, setSkippingWeek] = useState(null);
 
-  const [skipChecklist] = useSkipChecklistMutation();
-  const [undoSkipChecklist] = useUndoSkipChecklistMutation();
+  const [skipChecklist, { isLoading: isSkipping }] = useSkipChecklistMutation();
 
   const checklistId = checklistData?.id;
   const weeks = checklistData?.current_month_weeks ?? [];
   const weeklyRecords = checklistData?.weekly_records ?? [];
+
   const monthLabel = checklistData?.weeks_period
     ? new Date(
         checklistData.weeks_period.year,
         checklistData.weeks_period.month - 1,
-      ).toLocaleDateString("en-PH", { month: "long", year: "numeric" })
+      ).toLocaleDateString("en-PH", {
+        month: "long",
+        year: "numeric",
+      })
     : "";
 
   const handleAnswerModalClose = () => {
     setAnswerModalOpen(false);
     setAnsweringWeek(null);
+    setAnsweringWeeklyRecordId(null);
   };
 
   const handleConfirmSkip = async () => {
@@ -219,47 +223,34 @@ const QADashboardModal = ({ open, checklistData, onClose }) => {
       setSkipReasonError(true);
       return;
     }
+
     try {
       await skipChecklist({
         id: checklistId,
+        week: skippingWeek,
         reason: skipReason.trim(),
       }).unwrap();
+
       window.__snackbar__?.enqueueSnackbar("Week skipped successfully.", {
         variant: "success",
       });
+
       setConfirmSkipOpen(false);
       setSkipReason("");
       setSkipReasonError(false);
       setSkippingWeek(null);
     } catch (err) {
-      window.__snackbar__?.enqueueSnackbar(
-        err?.data?.message || "Failed to skip week.",
-        { variant: "error" },
-      );
+      console.error("Skip failed:", err);
     }
   };
 
   const handleCancelSkip = () => {
+    if (isSkipping) return;
+
     setConfirmSkipOpen(false);
     setSkipReason("");
     setSkipReasonError(false);
     setSkippingWeek(null);
-  };
-
-  const handleConfirmUndoSkip = async () => {
-    try {
-      await undoSkipChecklist(checklistId).unwrap();
-      window.__snackbar__?.enqueueSnackbar(
-        "Week restored to not started successfully.",
-        { variant: "success" },
-      );
-    } catch (err) {
-      window.__snackbar__?.enqueueSnackbar(
-        err?.data?.message || "Failed to undo skip.",
-        { variant: "error" },
-      );
-    }
-    setConfirmUndoSkipOpen(false);
   };
 
   return (
@@ -283,41 +274,43 @@ const QADashboardModal = ({ open, checklistData, onClose }) => {
                 <th className="qdm__th">Week</th>
                 <th className="qdm__th">Total Score</th>
                 <th className="qdm__th">Done On</th>
-                <th className="qdm__th">Timeline</th>
                 <th className="qdm__th">Status</th>
                 <th className="qdm__th">Skip Reason</th>
                 <th className="qdm__th qdm__th--actions">Actions</th>
               </tr>
             </thead>
+
             <tbody>
               {weeks.map((week, index) => {
                 const weeklyRecord = findWeeklyRecord(
                   weeklyRecords,
                   week.weekly_record_id,
                 );
+
                 const actionable = isWeekActionable(weeks, index);
+
                 return (
                   <tr key={week.week} className="qdm__tr">
                     <td className="qdm__td">Week {week.week}</td>
+
                     <td className="qdm__td">
                       {week.overall_score != null
                         ? `${week.overall_score}%`
                         : "—"}
                     </td>
+
                     <td className="qdm__td qdm__td--doneon">
                       {getDoneOn(weeklyRecord)}
                     </td>
-                    <td className="qdm__td qdm__td--timeline">
-                      {getTimeline(weeklyRecord)}
-                    </td>
+
                     <td className="qdm__td">
                       <StatusChip status={week.status} />
                     </td>
+
                     <td className="qdm__td qdm__td--skipreason">
-                      {week.status === "skipped"
-                        ? weeklyRecord?.skip_reason || "—"
-                        : "—"}
+                      {weeklyRecord?.skip_reason || "—"}
                     </td>
+
                     <td className="qdm__td qdm__td--actions">
                       <RowActionMenu
                         week={week}
@@ -325,13 +318,18 @@ const QADashboardModal = ({ open, checklistData, onClose }) => {
                         actionable={actionable}
                         onAnswer={() => {
                           setAnsweringWeek(week.week);
+                          setAnsweringWeeklyRecordId(null);
+                          setAnswerModalOpen(true);
+                        }}
+                        onContinue={(record) => {
+                          setAnsweringWeek(week.week);
+                          setAnsweringWeeklyRecordId(record?.id ?? null);
                           setAnswerModalOpen(true);
                         }}
                         onSkip={() => {
                           setSkippingWeek(week.week);
                           setConfirmSkipOpen(true);
                         }}
-                        onUndoSkip={() => setConfirmUndoSkipOpen(true)}
                         onView={setScoreDialogData}
                         onShowChecklist={(record, weekNum) =>
                           setChecklistViewData({
@@ -364,6 +362,7 @@ const QADashboardModal = ({ open, checklistData, onClose }) => {
         checklistId={checklistId}
         checklistDetail={checklistData}
         week={answeringWeek}
+        weeklyRecordId={answeringWeeklyRecordId}
       />
 
       <QAAnswerModal
@@ -393,49 +392,58 @@ const QADashboardModal = ({ open, checklistData, onClose }) => {
           <div className="qdm__skip-icon-wrap">
             <WarningAmberIcon className="qdm__skip-icon" />
           </div>
+
           <p className="qdm__skip-title">Skip Week {skippingWeek ?? ""}?</p>
+
           <p className="qdm__skip-desc">
             This will mark this week's checklist as skipped. This action cannot
             be undone.
           </p>
 
           <p className="qdm__skip-label">Reason</p>
+
           <textarea
-            className={`qdm__skip-textarea${skipReasonError ? " qdm__skip-textarea--error" : ""}`}
+            className={`qdm__skip-textarea${
+              skipReasonError ? " qdm__skip-textarea--error" : ""
+            }`}
             placeholder="Enter reason for skipping"
             value={skipReason}
+            disabled={isSkipping}
             onChange={(e) => {
               setSkipReason(e.target.value);
-              if (e.target.value.trim()) setSkipReasonError(false);
+
+              if (e.target.value.trim()) {
+                setSkipReasonError(false);
+              }
             }}
           />
+
           {skipReasonError && (
             <p className="qdm__skip-error">The reason field is required.</p>
           )}
         </DialogContent>
+
         <DialogActions className="qdm__skip-footer">
           <Button
             variant="outlined"
             onClick={handleCancelSkip}
+            disabled={isSkipping}
             className="qdm__skip-btn-cancel">
             Cancel
           </Button>
+
           <Button
             variant="contained"
             onClick={handleConfirmSkip}
+            disabled={isSkipping}
+            startIcon={
+              isSkipping ? <CircularProgress size={16} color="inherit" /> : null
+            }
             className="qdm__skip-btn-confirm">
-            Skip
+            {isSkipping ? "Skipping..." : "Skip"}
           </Button>
         </DialogActions>
       </Dialog>
-
-      <ConfirmDialog
-        open={confirmUndoSkipOpen}
-        onClose={() => setConfirmUndoSkipOpen(false)}
-        onConfirm={handleConfirmUndoSkip}
-        title="Undo Skip"
-        message="Are you sure you want to restore this week back to not started?"
-      />
     </>
   );
 };

@@ -24,19 +24,20 @@ import {
   useCreateChecklistTypeMutation,
   useUpdateChecklistTypeMutation,
 } from "../../features/api/checklist-type/checklistTypeApi";
-import { useGetAreasQuery } from "../../features/api/areas/areasApi";
+import { useGetDepartmentsQuery } from "../../features/api/departments/departmentsApi";
 import ConfirmDialog from "../../reusable-components/confirm-dialog/ConfirmDialog";
 import "./ChecklistTypeModal.scss";
 
 const schema = yup.object({
   name: yup.string().required("Checklist type name is required."),
-  department_code: yup.string().nullable(),
-  area_ids: yup.array().of(yup.number()).nullable(),
+  department_ids: yup.array().of(yup.number()).nullable(),
 });
 
-const getAreaOptionLabel = (area) => {
-  if (!area) return "";
-  return area.code ? `${area.code} - ${area.name}` : (area.name ?? "");
+const getDepartmentOptionLabel = (department) => {
+  if (!department) return "";
+  return department.code
+    ? `${department.code} - ${department.name}`
+    : (department.name ?? "");
 };
 
 const MultiSearchSelect = ({
@@ -178,10 +179,6 @@ const SkeletonLoader = () => (
       <span className="ut__skeleton ctm__skeleton-label" />
       <span className="ut__skeleton ctm__skeleton-field" />
     </div>
-    <div className="ctm__skeleton-group">
-      <span className="ut__skeleton ctm__skeleton-label" />
-      <span className="ut__skeleton ctm__skeleton-field" />
-    </div>
     <div className="ctm__skeleton-footer">
       <span className="ut__skeleton ctm__skeleton-btn" />
     </div>
@@ -203,11 +200,10 @@ const ChecklistTypeModal = ({ open, onClose, selectedId = null }) => {
       skip: !selectedId || !open,
     });
 
-  const { data: areasData, isFetching: areasLoading } = useGetAreasQuery(
-    { status: "active" },
-    { skip: !open },
-  );
-  const areaOptions = areasData?.data?.data ?? areasData?.data ?? [];
+  const { data: departmentsData, isFetching: departmentsLoading } =
+    useGetDepartmentsQuery({ status: "active" }, { skip: !open });
+  const departmentOptions =
+    departmentsData?.data?.data ?? departmentsData?.data ?? [];
 
   const {
     register,
@@ -219,8 +215,7 @@ const ChecklistTypeModal = ({ open, onClose, selectedId = null }) => {
     resolver: yupResolver(schema),
     defaultValues: {
       name: "",
-      department_code: "",
-      area_ids: [],
+      department_ids: [],
     },
   });
 
@@ -232,7 +227,7 @@ const ChecklistTypeModal = ({ open, onClose, selectedId = null }) => {
     if (!selectedId) {
       setMode("add");
       setSelectedRow(null);
-      reset({ name: "", department_code: "", area_ids: [] });
+      reset({ name: "", department_ids: [] });
     } else {
       setMode("view");
     }
@@ -244,8 +239,8 @@ const ChecklistTypeModal = ({ open, onClose, selectedId = null }) => {
       setSelectedRow(data);
       reset({
         name: data?.name ?? "",
-        department_code: data?.department_code ?? "",
-        area_ids: data?.areas?.map((area) => area.id) ?? [],
+        department_ids:
+          data?.departments?.map((department) => department.id) ?? [],
       });
     }
   }, [open, selectedId, checklistTypeData, reset]);
@@ -346,28 +341,30 @@ const ChecklistTypeModal = ({ open, onClose, selectedId = null }) => {
                 </div>
               </div>
               <div className="ctm__field">
-                <div className="ctm__input-wrap ctm__input-wrap--disabled">
-                  <label className="ctm__label">Department Code</label>
-                  <input
-                    type="text"
-                    value={selectedRow?.department_code ?? ""}
-                    disabled
-                    readOnly
-                  />
-                </div>
-              </div>
-              <div className="ctm__field">
-                <label className="ctm__label ctm__label--static">Areas</label>
-                <div className="ctm__view-chips">
-                  {selectedRow?.areas?.length ? (
-                    selectedRow.areas.map((area) => (
-                      <span key={area.id} className="ctm__view-chip">
-                        {getAreaOptionLabel(area)}
-                      </span>
-                    ))
-                  ) : (
-                    <span className="ctm__view-empty">No areas assigned</span>
-                  )}
+                <label className="ctm__label ctm__label--static">
+                  Departments
+                </label>
+                <div className="ctm__ac ctm__ac--disabled">
+                  <div className="ctm__ac-box">
+                    <div className="ctm__ac-box-content">
+                      {selectedRow?.departments?.length ? (
+                        <div className="ctm__ac-chips">
+                          {selectedRow.departments.map((department) => (
+                            <span key={department.id} className="ctm__ac-chip">
+                              {getDepartmentOptionLabel(department)}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="ctm__ac-placeholder">
+                          No departments assigned
+                        </span>
+                      )}
+                    </div>
+                    <span className="ctm__ac-arrow">
+                      <KeyboardArrowDownIcon />
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -398,44 +395,28 @@ const ChecklistTypeModal = ({ open, onClose, selectedId = null }) => {
               </div>
 
               <div className="ctm__field">
-                <div
-                  className={`ctm__input-wrap${errors.department_code ? " ctm__input-wrap--error" : ""}`}>
-                  <label className="ctm__label">Department Code</label>
-                  <input
-                    type="text"
-                    {...register("department_code")}
-                    autoComplete="off"
-                  />
-                </div>
-                {errors.department_code && (
-                  <p className="ctm__error">
-                    <ReportProblemIcon />
-                    {errors.department_code?.message}
-                  </p>
-                )}
-              </div>
-
-              <div className="ctm__field">
-                <label className="ctm__label ctm__label--static">Areas</label>
+                <label className="ctm__label ctm__label--static">
+                  Departments
+                </label>
                 <Controller
-                  name="area_ids"
+                  name="department_ids"
                   control={control}
                   render={({ field: { onChange, value } }) => (
                     <MultiSearchSelect
                       value={value ?? []}
                       onChange={onChange}
-                      options={areaOptions}
-                      getOptionLabel={getAreaOptionLabel}
-                      loading={areasLoading}
-                      error={!!errors.area_ids}
-                      placeholder="Select areas"
+                      options={departmentOptions}
+                      getOptionLabel={getDepartmentOptionLabel}
+                      loading={departmentsLoading}
+                      error={!!errors.department_ids}
+                      placeholder="Select departments"
                     />
                   )}
                 />
-                {errors.area_ids && (
+                {errors.department_ids && (
                   <p className="ctm__error">
                     <ReportProblemIcon />
-                    {errors.area_ids?.message}
+                    {errors.department_ids?.message}
                   </p>
                 )}
               </div>

@@ -1,6 +1,6 @@
 @use "../../styles/colors" as *;
 
-.ctm {
+.acl {
   &__paper {
     border-radius: 14px !important;
     font-family: "Poppins", sans-serif;
@@ -84,6 +84,17 @@
     margin-bottom: 16px;
   }
 
+  &__row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  &__field--grow {
+    flex: 1;
+    min-width: 0;
+  }
+
   &__group-label {
     font-size: 0.68rem;
     font-weight: 600;
@@ -100,11 +111,6 @@
 
   &__field {
     position: relative;
-    margin-bottom: 16px;
-
-    &:last-child {
-      margin-bottom: 0;
-    }
   }
 
   &__label {
@@ -161,14 +167,14 @@
     transition: border-color 0.2s;
     position: relative;
 
-    .ctm__label {
+    .acl__label {
       background: #fff;
     }
 
     &:focus-within {
       border-color: $primary-main;
 
-      .ctm__label {
+      .acl__label {
         color: $primary-main;
       }
     }
@@ -176,7 +182,7 @@
     &--error {
       border-color: $status-error !important;
 
-      .ctm__label {
+      .acl__label {
         color: $status-error !important;
       }
     }
@@ -187,7 +193,7 @@
       cursor: default;
       pointer-events: none;
 
-      .ctm__label {
+      .acl__label {
         background: $bg-main;
       }
 
@@ -195,7 +201,7 @@
         background: rgba(255, 255, 255, 0.02) !important;
         border-color: rgba(255, 255, 255, 0.06) !important;
 
-        .ctm__label {
+        .acl__label {
           background: $bg-main;
         }
       }
@@ -209,7 +215,7 @@
         }
       }
 
-      .ctm__label {
+      .acl__label {
         color: $text-muted !important;
         opacity: 0.7;
       }
@@ -277,6 +283,10 @@
     display: block !important;
     flex: none !important;
     min-width: unset !important;
+
+    &--tall {
+      height: 80px !important;
+    }
   }
 
   &__skeleton-footer {
@@ -323,6 +333,68 @@
     }
   }
 
+  &__toggle-row {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+  }
+
+  &__toggle-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: $text-primary;
+    font-family: "Poppins", sans-serif;
+    cursor: pointer;
+    white-space: nowrap;
+
+    [data-theme="dark"] & {
+      color: rgba(255, 255, 255, 0.85);
+    }
+  }
+
+  &__toggle-input {
+    display: none;
+
+    &:checked + .acl__toggle-track {
+      background: $primary-main;
+
+      [data-theme="dark"] & {
+        background: $secondary-main;
+      }
+
+      .acl__toggle-thumb {
+        transform: translateX(16px);
+      }
+    }
+  }
+
+  &__toggle-track {
+    position: relative;
+    width: 34px;
+    height: 18px;
+    border-radius: 999px;
+    background: $border-color;
+    transition: background 0.2s;
+
+    [data-theme="dark"] & {
+      background: rgba(255, 255, 255, 0.15);
+    }
+  }
+
+  &__toggle-thumb {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #fff;
+    transition: transform 0.2s;
+  }
+
   &__ac {
     position: relative;
     border: 1.5px solid $border-color;
@@ -337,6 +409,10 @@
 
     &:hover {
       border-color: $primary-main;
+
+      [data-theme="dark"] & {
+        border-color: $secondary-main;
+      }
     }
 
     &--error {
@@ -345,77 +421,21 @@
 
     &--open {
       border-color: $primary-main;
-    }
-
-    &--disabled {
-      background: rgba($primary-main, 0.03) !important;
-      border-color: $border-color !important;
-      cursor: default;
-      pointer-events: none;
 
       [data-theme="dark"] & {
-        background: rgba(255, 255, 255, 0.02) !important;
-        border-color: rgba(255, 255, 255, 0.06) !important;
-      }
-
-      .ctm__ac-placeholder {
-        color: $text-muted !important;
-        opacity: 0.7;
+        border-color: $secondary-main;
       }
     }
   }
 
   &__ac-box {
     min-height: 44px;
-    padding: 6px 12px;
+    padding: 0 12px;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 8px;
-  }
-
-  &__ac-box-content {
-    flex: 1;
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 6px;
-    min-width: 0;
-  }
-
-  &__ac-chips {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-  }
-
-  &__ac-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    background: rgba($primary-main, 0.08);
-    color: $primary-main;
-    border-radius: 6px;
-    padding: 3px 6px 3px 8px;
-    font-size: 0.74rem;
-    font-weight: 500;
-    font-family: "Poppins", sans-serif;
-
-    [data-theme="dark"] & {
-      background: rgba($secondary-main, 0.14);
-      color: $secondary-main;
-    }
-  }
-
-  &__ac-chip-remove {
-    font-size: 0.85rem !important;
-    cursor: pointer;
-    opacity: 0.7;
-
-    &:hover {
-      opacity: 1;
-    }
   }
 
   &__ac-arrow {
@@ -433,8 +453,7 @@
     display: flex;
     align-items: center;
     gap: 6px;
-    flex: 1;
-    min-width: 80px;
+    width: 100%;
     color: $text-muted;
   }
 
@@ -446,11 +465,22 @@
     font-family: "Poppins", sans-serif;
     font-size: 0.82rem;
     color: $text-primary;
-    padding: 4px 0;
+    padding: 0;
 
     &::placeholder {
       color: $text-muted;
     }
+
+    [data-theme="dark"] & {
+      color: rgba(255, 255, 255, 0.85);
+    }
+  }
+
+  &__ac-value {
+    font-size: 0.82rem;
+    font-weight: 400;
+    color: $text-primary;
+    font-family: "Poppins", sans-serif;
 
     [data-theme="dark"] & {
       color: rgba(255, 255, 255, 0.85);
@@ -464,9 +494,11 @@
   }
 
   &__ac-dropdown {
+    position: static;
     margin-top: 4px;
     border: 1.5px solid $border-color;
-    border-radius: 8px;
+    border-top: none;
+    border-radius: 0 0 8px 8px;
     background: #fff;
     overflow: hidden;
 
@@ -495,7 +527,7 @@
   &__ac-option {
     display: flex;
     align-items: center;
-    padding: 4px 14px 4px 6px;
+    padding: 10px 14px;
     font-size: 0.8rem;
     font-family: "Poppins", sans-serif;
     color: $text-primary;
@@ -506,6 +538,7 @@
 
     &:hover {
       background-color: rgba($primary-main, 0.1) !important;
+      color: $primary-main;
     }
 
     &--selected {
@@ -524,22 +557,7 @@
 
       &:hover {
         background-color: rgba($secondary-main, 0.14) !important;
-      }
-    }
-  }
-
-  &__ac-option-checkbox {
-    color: $text-muted !important;
-
-    &.Mui-checked {
-      color: $primary-main !important;
-    }
-
-    [data-theme="dark"] & {
-      color: rgba(255, 255, 255, 0.4) !important;
-
-      &.Mui-checked {
-        color: $secondary-main !important;
+        color: $secondary-main;
       }
     }
   }

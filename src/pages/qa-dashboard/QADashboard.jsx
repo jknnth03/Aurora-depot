@@ -109,10 +109,10 @@ const QADashboard = () => {
 
   const columns = [
     {
-      key: "store",
-      label: "Store",
+      key: "area",
+      label: "Area",
       sortable: false,
-      render: (val, row) => row.store?.name ?? "—",
+      render: (val, row) => row.area?.name ?? "—",
     },
     {
       key: "checklist",

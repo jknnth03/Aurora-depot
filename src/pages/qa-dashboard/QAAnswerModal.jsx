@@ -2,12 +2,15 @@ import { useRef, useState, useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
+import dayjs from "dayjs";
 import Dialog from "@mui/material/Dialog";
 import DialogContent from "@mui/material/DialogContent";
 import DialogActions from "@mui/material/DialogActions";
 import IconButton from "@mui/material/IconButton";
 import Button from "@mui/material/Button";
 import Skeleton from "@mui/material/Skeleton";
+import Menu from "@mui/material/Menu";
+import MenuItem from "@mui/material/MenuItem";
 import CloseIcon from "@mui/icons-material/Close";
 import ChecklistIcon from "@mui/icons-material/Checklist";
 import VisibilityIcon from "@mui/icons-material/Visibility";
@@ -18,12 +21,46 @@ import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import MenuBookIcon from "@mui/icons-material/MenuBook";
 import ConfirmDialog from "../../reusable-components/confirm-dialog/ConfirmDialog";
+import AttachmentViewerDialog from "./AttachmentViewerDialog";
+import GuidelineFileDialog from "../guidelines/GuidelineFileDialog";
 import {
   useAnswerChecklistMutation,
   useGetMyChecklistWeeklyRecordQuery,
 } from "../../features/api/qa-dashboard/qaDashboardApi";
 import { useGetScoreGradingsQuery } from "../../features/api/score-grading/scoreGradingApi";
 import "./QAAnswerModal.scss";
+
+const API_ORIGIN = (() => {
+  try {
+    return new URL(import.meta.env.VITE_API_URL || "").origin;
+  } catch {
+    return "";
+  }
+})();
+
+const fixAttachmentUrl = (rawUrl) => {
+  if (!rawUrl) return rawUrl;
+  try {
+    const parsed = new URL(rawUrl);
+    if (parsed.hostname === "localhost" && API_ORIGIN) {
+      return `${API_ORIGIN}${parsed.pathname}${parsed.search}`;
+    }
+    return rawUrl;
+  } catch {
+    return rawUrl;
+  }
+};
+
+const getFilenameFromUrl = (url) => {
+  if (!url) return null;
+  try {
+    const last = new URL(url).pathname.split("/").filter(Boolean).pop();
+    return last ? decodeURIComponent(last) : null;
+  } catch {
+    const last = String(url).split("?")[0].split("/").filter(Boolean).pop();
+    return last || null;
+  }
+};
 
 const buildValidationSchema = (scoreGradingOptions) => {
   const maxPercentage = scoreGradingOptions.length
@@ -107,21 +144,64 @@ const buildSectionIndexMap = (flattened) => {
   return map;
 };
 
-// The API returns each question's saved answer nested inside an
-// `answers` object keyed by category (sanitation / structural / equipment).
-// Only the category that was actually answered will be non-null, so we
-// just grab whichever one is present. This also stays backward-compatible
-// with a flat `question.answer` shape if that ever comes back instead.
 const extractQuestionAnswer = (question) => {
   if (question?.answer) return question.answer;
 
   const answers = question?.answers;
   if (!answers) return null;
 
-  // Already a single answer object (has its own score_grading_id)
   if (answers.score_grading_id !== undefined) return answers;
 
   return answers.sanitation ?? answers.structural ?? answers.equipment ?? null;
+};
+
+const parseAttachmentList = (value) => {
+  if (Array.isArray(value)) return value;
+  if (typeof value === "string" && value.trim().startsWith("[")) {
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+};
+
+const normalizeAttachmentItem = (item) => {
+  if (!item) return null;
+  if (typeof item === "string") {
+    const url = fixAttachmentUrl(item);
+    return { url, name: getFilenameFromUrl(url) };
+  }
+  const url = fixAttachmentUrl(
+    item.url ?? item.attachment_url ?? item.file_url ?? item.path,
+  );
+  if (!url) return null;
+  return {
+    url,
+    name:
+      item.filename ?? item.file_name ?? item.name ?? getFilenameFromUrl(url),
+  };
+};
+
+const extractAttachmentsFromAnswer = (answer) => {
+  if (!answer) return [];
+
+  const rawList = [answer.attachment_urls, answer.attachments]
+    .map(parseAttachmentList)
+    .find((list) => list.length > 0);
+
+  if (rawList) {
+    return rawList.map(normalizeAttachmentItem).filter((att) => !!att?.url);
+  }
+
+  if (answer.attachment_url) {
+    const url = fixAttachmentUrl(answer.attachment_url);
+    return [{ url, name: getFilenameFromUrl(url) }];
+  }
+
+  return [];
 };
 
 const buildAnswerMapFromRecord = (weeklyRecordData) => {
@@ -138,8 +218,8 @@ const buildAnswerMapFromRecord = (weeklyRecordData) => {
   return { record, answerMap };
 };
 
-const buildDefaultValues = (flattenedQuestions, viewOnly, weeklyRecordData) => {
-  if (!viewOnly) {
+const buildDefaultValues = (flattenedQuestions, weeklyRecordData) => {
+  if (!weeklyRecordData) {
     return {
       answers: flattenedQuestions.map(({ question }) => ({
         checklist_question_id: question.id,
@@ -172,51 +252,110 @@ const buildDefaultValues = (flattenedQuestions, viewOnly, weeklyRecordData) => {
   };
 };
 
-const buildAttachmentUrlMap = (
-  flattenedQuestions,
-  viewOnly,
-  weeklyRecordData,
-) => {
-  if (!viewOnly) return {};
+const buildAttachmentUrlMap = (flattenedQuestions, weeklyRecordData) => {
+  if (!weeklyRecordData) return {};
   const { answerMap } = buildAnswerMapFromRecord(weeklyRecordData);
   const urlMap = {};
   flattenedQuestions.forEach(({ question }, index) => {
     const answer = answerMap[question.id];
-    if (answer?.attachment_url) {
-      urlMap[index] = answer.attachment_url;
+    const attachments = extractAttachmentsFromAnswer(answer);
+    if (attachments.length) {
+      urlMap[index] = attachments;
     }
   });
   return urlMap;
 };
 
-const PhotoCell = ({ viewOnly, attachmentUrl, attachmentName, onChange }) => {
+const getQuestionCategory = (question) => {
+  if (question?.sanitation_percentage != null) return "sanitation";
+  if (question?.structural_percentage != null) return "structural";
+  if (question?.equipment_percentage != null) return "equipment";
+  return question?.category ?? null;
+};
+
+const PhotoCell = ({
+  viewOnly,
+  existingAttachments = [],
+  newFiles = [],
+  onAddFiles,
+  onRemoveNewFile,
+  onView,
+}) => {
+  const safeExisting = Array.isArray(existingAttachments)
+    ? existingAttachments
+    : [];
+  const safeNewFiles = Array.isArray(newFiles) ? newFiles : [];
+
   if (viewOnly) {
-    if (!attachmentUrl) {
+    if (safeExisting.length === 0) {
       return <span className="qdm__dash">-</span>;
     }
     return (
-      <a
-        href={attachmentUrl}
-        target="_blank"
-        rel="noreferrer"
-        className="qam__photo-btn">
-        <PhotoCameraIcon fontSize="small" />
-        <span>View photo</span>
-      </a>
+      <div className="qam__photo-cell qam__photo-cell--view">
+        {safeExisting.map((attachment, idx) => (
+          <button
+            key={idx}
+            type="button"
+            className="qam__photo-view-chip"
+            onClick={() => onView(attachment)}>
+            <VisibilityIcon fontSize="small" />
+            <span>{attachment.name || `Photo ${idx + 1}`}</span>
+          </button>
+        ))}
+      </div>
     );
   }
 
   return (
-    <label className="qam__photo-btn">
-      <PhotoCameraIcon fontSize="small" />
-      <span>{attachmentName ?? "Add photo"}</span>
-      <input
-        type="file"
-        accept="image/*"
-        hidden
-        onChange={(e) => onChange(e.target.files?.[0] ?? null)}
-      />
-    </label>
+    <div className="qam__photo-cell">
+      <label className="qam__photo-btn">
+        <PhotoCameraIcon fontSize="small" />
+        <span>Add photo</span>
+        <input
+          type="file"
+          accept="image/*"
+          multiple
+          hidden
+          onChange={(e) => {
+            onAddFiles(Array.from(e.target.files ?? []));
+            e.target.value = "";
+          }}
+        />
+      </label>
+
+      {safeExisting.map((attachment, idx) => (
+        <div className="qam__photo-chip" key={`existing-${idx}`}>
+          <button
+            type="button"
+            className="qam__photo-view-btn"
+            onClick={() => onView(attachment)}>
+            <VisibilityIcon fontSize="small" />
+            <span>{attachment.name || `Photo ${idx + 1}`}</span>
+          </button>
+        </div>
+      ))}
+
+      {safeNewFiles.map((file, idx) => (
+        <div className="qam__photo-chip" key={`new-${idx}`}>
+          <button
+            type="button"
+            className="qam__photo-view-btn"
+            onClick={() =>
+              onView({ url: URL.createObjectURL(file), name: file.name })
+            }>
+            <VisibilityIcon fontSize="small" />
+            <span>{file.name}</span>
+          </button>
+          <IconButton
+            type="button"
+            size="small"
+            className="qam__photo-remove-btn"
+            onClick={() => onRemoveNewFile(idx)}>
+            <CloseIcon sx={{ fontSize: 14 }} />
+          </IconButton>
+        </div>
+      ))}
+    </div>
   );
 };
 
@@ -294,6 +433,8 @@ const QAAnswerForm = ({
   checklistId,
   checklistDetail,
   week,
+  month,
+  year,
   viewOnly,
   weeklyRecordData,
   scoreGradingOptions,
@@ -350,28 +491,32 @@ const QAAnswerForm = ({
     formState: { errors },
   } = useForm({
     resolver: yupResolver(validationSchema),
-    defaultValues: buildDefaultValues(
-      flattenedQuestions,
-      viewOnly,
-      weeklyRecordData,
-    ),
+    defaultValues: buildDefaultValues(flattenedQuestions, weeklyRecordData),
   });
 
   const watchedAnswers = watch("answers");
   const watchedApplyAll = watch("applyDefaultAll");
 
+  const goodPointsRequired = (watchedAnswers ?? []).some((answer) =>
+    isMaxScoreSelected(answer?.score_grading_id),
+  );
+
   const [attachments, setAttachments] = useState({});
   const [attachmentUrls, setAttachmentUrls] = useState(() =>
-    buildAttachmentUrlMap(flattenedQuestions, viewOnly, weeklyRecordData),
+    buildAttachmentUrlMap(flattenedQuestions, weeklyRecordData),
   );
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pendingFormData, setPendingFormData] = useState(null);
+  const [draftConfirmOpen, setDraftConfirmOpen] = useState(false);
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [activeAction, setActiveAction] = useState(null);
   const [activeSectionIndex, setActiveSectionIndex] = useState(0);
   const [autoFilledIndices, setAutoFilledIndices] = useState([]);
+  const [attachmentErrors, setAttachmentErrors] = useState({});
+  const [viewerAttachment, setViewerAttachment] = useState(null);
 
   const firstErrorRef = useRef(null);
+  const timeInRef = useRef(dayjs());
 
   useEffect(() => {
     if (submitAttempted && firstErrorRef.current) {
@@ -382,8 +527,40 @@ const QAAnswerForm = ({
     }
   }, [errors, submitAttempted, activeSectionIndex]);
 
-  const handleAttachmentChange = (index, file) => {
-    setAttachments((prev) => ({ ...prev, [index]: file }));
+  const handleAddAttachments = (index, files) => {
+    if (!files || files.length === 0) return;
+    setAttachments((prev) => ({
+      ...prev,
+      [index]: [...(prev[index] ?? []), ...files],
+    }));
+    setAttachmentErrors((prev) => {
+      if (!prev[index]) return prev;
+      const next = { ...prev };
+      delete next[index];
+      return next;
+    });
+  };
+
+  const handleRemoveAttachment = (index, fileIndex) => {
+    setAttachments((prev) => {
+      const list = [...(prev[index] ?? [])];
+      list.splice(fileIndex, 1);
+      return { ...prev, [index]: list };
+    });
+  };
+
+  const validateAttachments = () => {
+    const nextErrors = {};
+    flattenedQuestions.forEach((_, index) => {
+      const selectedId = watchedAnswers?.[index]?.score_grading_id;
+      if (isMaxScoreSelected(selectedId)) return;
+      const newCount = attachments[index]?.length ?? 0;
+      const existingCount = attachmentUrls[index]?.length ?? 0;
+      if (newCount === 0 && existingCount === 0) {
+        nextErrors[index] = "At least one photo is required.";
+      }
+    });
+    return nextErrors;
   };
 
   const handleSetAllInSection = (section, optionId) => {
@@ -476,35 +653,67 @@ const QAAnswerForm = ({
 
   const buildAnswersFormData = (answers, others, status) => {
     const formData = new FormData();
+    const timeIn = timeInRef.current;
+    const timeOut = dayjs();
+
     answers.forEach((answer, index) => {
+      const question = flattenedQuestions[index]?.question;
       formData.append(
         `answers[${index}][checklist_question_id]`,
         answer.checklist_question_id,
+      );
+      formData.append(
+        `answers[${index}][category]`,
+        getQuestionCategory(question) ?? "",
       );
       formData.append(
         `answers[${index}][score_grading_id]`,
         answer.score_grading_id ?? "",
       );
       formData.append(`answers[${index}][remarks]`, answer.remarks ?? "");
-      if (attachments[index]) {
-        formData.append(`answers[${index}][attachment]`, attachments[index]);
-      }
+      (attachments[index] ?? []).forEach((file) => {
+        formData.append(`answers[${index}][attachments][]`, file);
+      });
     });
     formData.append("good_points", others?.good_points ?? "");
     formData.append("note", others?.notes ?? "");
+    formData.append("time_in", timeIn.format("HH:mm"));
+    formData.append("time_in_date", timeIn.format("YYYY-MM-DD"));
+    formData.append("time_out", timeOut.format("HH:mm"));
+    formData.append("time_out_date", timeOut.format("YYYY-MM-DD"));
     formData.append("status", status);
     formData.append("week", week);
+    formData.append("month", month ?? dayjs().month() + 1);
+    formData.append("year", year ?? dayjs().year());
     return formData;
   };
 
   const onValidSubmit = (form) => {
+    setSubmitAttempted(true);
+    const nextAttachmentErrors = validateAttachments();
+    setAttachmentErrors(nextAttachmentErrors);
+    if (Object.keys(nextAttachmentErrors).length > 0) {
+      const firstErrorIndex = Number(Object.keys(nextAttachmentErrors)[0]);
+      const sectionId = flattenedQuestions[firstErrorIndex]?.section?.id;
+      const sectionIdx = sections.findIndex(
+        (section) => section.id === sectionId,
+      );
+      if (sectionIdx > -1) setActiveSectionIndex(sectionIdx);
+      return;
+    }
     setPendingFormData(form);
     setConfirmOpen(true);
   };
 
   const onInvalidSubmit = () => {
     setSubmitAttempted(true);
-    const firstErrorIndex = (errors?.answers ?? []).findIndex((entry) => entry);
+    const nextAttachmentErrors = validateAttachments();
+    setAttachmentErrors(nextAttachmentErrors);
+    let firstErrorIndex = (errors?.answers ?? []).findIndex((entry) => entry);
+    if (firstErrorIndex === -1) {
+      const attachmentIndices = Object.keys(nextAttachmentErrors).map(Number);
+      if (attachmentIndices.length > 0) firstErrorIndex = attachmentIndices[0];
+    }
     if (firstErrorIndex > -1) {
       const sectionId = flattenedQuestions[firstErrorIndex]?.section?.id;
       const sectionIdx = sections.findIndex(
@@ -532,10 +741,6 @@ const QAAnswerForm = ({
       setPendingFormData(null);
       onClose();
     } catch (err) {
-      window.__snackbar__?.enqueueSnackbar(
-        err?.data?.message || "Failed to submit checklist.",
-        { variant: "error" },
-      );
       setConfirmOpen(false);
     } finally {
       setActiveAction(null);
@@ -547,33 +752,54 @@ const QAAnswerForm = ({
     setPendingFormData(null);
   };
 
-  const handleSaveDraft = async () => {
+  const handleSaveDraftClick = () => {
+    const hasAtLeastOneAnswer = (watchedAnswers ?? []).some(
+      (answer) => !!answer?.score_grading_id,
+    );
+
+    if (!hasAtLeastOneAnswer) {
+      window.__snackbar__?.enqueueSnackbar(
+        "Please answer at least one item before saving as draft.",
+        { variant: "error" },
+      );
+      return;
+    }
+
+    setDraftConfirmOpen(true);
+  };
+
+  const handleConfirmSaveDraft = async () => {
     setActiveAction("draft");
     try {
       const formValues = getValues();
       const body = buildAnswersFormData(
         formValues.answers,
         formValues.others,
-        "draft",
+        "in_progress",
       );
       await answerChecklist({ id: checklistId, body }).unwrap();
       window.__snackbar__?.enqueueSnackbar("Draft saved.", {
         variant: "success",
       });
+      setDraftConfirmOpen(false);
       onClose();
     } catch (err) {
-      window.__snackbar__?.enqueueSnackbar(
-        err?.data?.message || "Failed to save draft.",
-        { variant: "error" },
-      );
+      setDraftConfirmOpen(false);
     } finally {
       setActiveAction(null);
     }
   };
 
-  const errorCount = errors?.answers
-    ? errors.answers.filter(Boolean).length
-    : 0;
+  const handleCancelDraftConfirm = () => {
+    setDraftConfirmOpen(false);
+  };
+
+  const errorIndices = new Set();
+  (errors?.answers ?? []).forEach((entry, idx) => {
+    if (entry) errorIndices.add(idx);
+  });
+  Object.keys(attachmentErrors).forEach((idx) => errorIndices.add(Number(idx)));
+  const errorCount = errorIndices.size;
 
   let firstErrorSet = false;
   const getFirstErrorRef = (hasError) => {
@@ -585,14 +811,6 @@ const QAAnswerForm = ({
   };
 
   const isBusy = activeAction !== null;
-  const allAnswered =
-    flattenedQuestions.length > 0 &&
-    flattenedQuestions.every(
-      (_, index) => !!watchedAnswers?.[index]?.score_grading_id,
-    );
-  const goodPointsRequired = (watchedAnswers ?? []).some((answer) =>
-    isMaxScoreSelected(answer?.score_grading_id),
-  );
   const activeSection = sections[activeSectionIndex] ?? null;
   const activeProgress = activeSection
     ? getSectionProgress(activeSection)
@@ -774,7 +992,9 @@ const QAAnswerForm = ({
                         !viewOnly && !!questionErrors?.score_grading_id;
                       const remarksError =
                         !viewOnly && !!questionErrors?.remarks;
-                      const hasRowError = scoreError || remarksError;
+                      const photoError = !viewOnly && attachmentErrors[index];
+                      const hasRowError =
+                        scoreError || remarksError || !!photoError;
                       const selectedId =
                         watchedAnswers?.[index]?.score_grading_id;
                       const remarksRequired = !isMaxScoreSelected(selectedId);
@@ -862,15 +1082,34 @@ const QAAnswerForm = ({
                             )}
                           </td>
 
-                          <td className="qam__td qam__td--photo">
+                          <td
+                            className={`qam__td qam__td--photo${
+                              photoError ? " qam__td--error" : ""
+                            }`}>
+                            {!viewOnly && remarksRequired && (
+                              <span className="qam__remarks-label">
+                                Photo
+                                <span className="qam__required">*</span>
+                              </span>
+                            )}
                             <PhotoCell
                               viewOnly={viewOnly}
-                              attachmentUrl={attachmentUrls[index]}
-                              attachmentName={attachments[index]?.name}
-                              onChange={(file) =>
-                                handleAttachmentChange(index, file)
+                              existingAttachments={attachmentUrls[index] ?? []}
+                              newFiles={attachments[index] ?? []}
+                              onAddFiles={(files) =>
+                                handleAddAttachments(index, files)
                               }
+                              onRemoveNewFile={(fileIdx) =>
+                                handleRemoveAttachment(index, fileIdx)
+                              }
+                              onView={setViewerAttachment}
                             />
+                            {photoError && (
+                              <span className="qam__inline-error">
+                                <ReportProblemIcon sx={{ fontSize: 10 }} />
+                                {photoError}
+                              </span>
+                            )}
                           </td>
                         </tr>
                       );
@@ -957,7 +1196,7 @@ const QAAnswerForm = ({
           {!viewOnly && (
             <Button
               variant="outlined"
-              onClick={handleSaveDraft}
+              onClick={handleSaveDraftClick}
               disabled={isBusy}
               className="qam__btn-draft">
               {activeAction === "draft" ? "Saving..." : "SAVE AS DRAFT"}
@@ -967,7 +1206,7 @@ const QAAnswerForm = ({
             <Button
               variant="contained"
               onClick={handleSubmit(onValidSubmit, onInvalidSubmit)}
-              disabled={isBusy || !allAnswered}
+              disabled={isBusy}
               className="qam__btn-submit">
               {activeAction === "submit" ? "Submitting..." : "SUBMIT"}
             </Button>
@@ -984,6 +1223,21 @@ const QAAnswerForm = ({
         confirmLabel="Submit"
         confirmVariant="success"
       />
+
+      <ConfirmDialog
+        open={draftConfirmOpen}
+        onClose={handleCancelDraftConfirm}
+        onConfirm={handleConfirmSaveDraft}
+        title="Save as Draft"
+        message={`Are you sure you want to save your progress for "${checklistDetail?.checklist?.name}" as draft? You can continue answering it later.`}
+        confirmLabel="Save"
+      />
+
+      <AttachmentViewerDialog
+        open={!!viewerAttachment}
+        onClose={() => setViewerAttachment(null)}
+        attachment={viewerAttachment}
+      />
     </>
   );
 };
@@ -994,6 +1248,8 @@ const QAAnswerModal = ({
   checklistId,
   checklistDetail,
   week,
+  month,
+  year,
   viewOnly = false,
   weeklyRecordId,
 }) => {
@@ -1005,7 +1261,7 @@ const QAAnswerModal = ({
   const { data: weeklyRecordData, isFetching: isWeeklyRecordFetching } =
     useGetMyChecklistWeeklyRecordQuery(
       { id: checklistId, recordId: weeklyRecordId },
-      { skip: !open || !viewOnly || !checklistId || !weeklyRecordId },
+      { skip: !open || !checklistId || !weeklyRecordId },
     );
 
   const rawScoreGradingOptions = Array.isArray(scoreGradingData?.data?.data)
@@ -1018,73 +1274,125 @@ const QAAnswerModal = ({
     (a, b) => (a.layer ?? 0) - (b.layer ?? 0),
   );
 
-  const showLoading = viewOnly
-    ? isWeeklyRecordFetching || isScoreGradingFetching
-    : isScoreGradingFetching;
+  const showLoading =
+    (weeklyRecordId ? isWeeklyRecordFetching : false) || isScoreGradingFetching;
 
   const formKey = `${checklistId ?? "none"}-${weeklyRecordId ?? "none"}-${
     viewOnly ? "view" : "answer"
   }-${weeklyRecordData ? "loaded" : "pending"}`;
 
-  return (
-    <Dialog
-      open={open}
-      onClose={(e, reason) => {
-        if (reason === "backdropClick") return;
-        onClose();
-      }}
-      disableEscapeKeyDown
-      maxWidth="lg"
-      fullWidth
-      PaperProps={{ className: "qam__paper" }}>
-      <div className="qam__header">
-        <div className="qam__header-top">
-          <div className="qam__header-title">
-            {viewOnly ? (
-              <VisibilityIcon className="qam__header-icon" />
-            ) : (
-              <ChecklistIcon className="qam__header-icon" />
-            )}
-            <span>{viewOnly ? "View Checklist" : "Answer Checklist"}</span>
-          </div>
-          <IconButton className="qam__close" onClick={onClose} size="small">
-            <CloseIcon fontSize="small" />
-          </IconButton>
-        </div>
-        <div className="qam__header-sub">
-          <span className="qam__name-value">
-            {checklistDetail?.checklist?.name}
-          </span>
-          <Button
-            variant="outlined"
-            size="small"
-            startIcon={<MenuBookIcon fontSize="small" />}
-            className="qam__btn-guideline">
-            VIEW GUIDELINE
-          </Button>
-        </div>
-      </div>
+  const weeklyRecord = weeklyRecordData?.data ?? weeklyRecordData;
+  const guidelines = weeklyRecord?.guidelines ?? [];
 
-      {showLoading ? (
-        <>
-          <DialogContent className="qam__content">
-            <ChecklistSkeleton />
-          </DialogContent>
-          <LoadingFooter viewOnly={viewOnly} onClose={onClose} />
-        </>
-      ) : (
-        <QAAnswerForm
-          key={formKey}
-          checklistId={checklistId}
-          checklistDetail={checklistDetail}
-          week={week}
-          viewOnly={viewOnly}
-          weeklyRecordData={weeklyRecordData}
-          scoreGradingOptions={scoreGradingOptions}
-          onClose={onClose}
-        />
-      )}
-    </Dialog>
+  const [guidelineMenuAnchor, setGuidelineMenuAnchor] = useState(null);
+  const [selectedGuideline, setSelectedGuideline] = useState(null);
+  const [guidelineFileDialogOpen, setGuidelineFileDialogOpen] = useState(false);
+
+  const handleGuidelineClick = (e) => {
+    if (guidelines.length === 0) return;
+    if (guidelines.length === 1) {
+      setSelectedGuideline(guidelines[0]);
+      setGuidelineFileDialogOpen(true);
+      return;
+    }
+    setGuidelineMenuAnchor(e.currentTarget);
+  };
+
+  const handleGuidelineMenuClose = () => setGuidelineMenuAnchor(null);
+
+  const handleSelectGuideline = (guideline) => {
+    setSelectedGuideline(guideline);
+    setGuidelineFileDialogOpen(true);
+    handleGuidelineMenuClose();
+  };
+
+  return (
+    <>
+      <Dialog
+        open={open}
+        onClose={(e, reason) => {
+          if (reason === "backdropClick") return;
+          onClose();
+        }}
+        disableEscapeKeyDown
+        maxWidth="lg"
+        fullWidth
+        PaperProps={{ className: "qam__paper" }}>
+        <div className="qam__header">
+          <div className="qam__header-top">
+            <div className="qam__header-title">
+              {viewOnly ? (
+                <VisibilityIcon className="qam__header-icon" />
+              ) : (
+                <ChecklistIcon className="qam__header-icon" />
+              )}
+              <span>{viewOnly ? "View Checklist" : "Answer Checklist"}</span>
+            </div>
+            <IconButton className="qam__close" onClick={onClose} size="small">
+              <CloseIcon fontSize="small" />
+            </IconButton>
+          </div>
+          <div className="qam__header-sub">
+            <span className="qam__name-value">
+              {checklistDetail?.checklist?.name}
+            </span>
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<MenuBookIcon fontSize="small" />}
+              className="qam__btn-guideline"
+              onClick={handleGuidelineClick}
+              disabled={guidelines.length === 0}>
+              VIEW GUIDELINE
+            </Button>
+          </div>
+        </div>
+
+        <Menu
+          anchorEl={guidelineMenuAnchor}
+          open={Boolean(guidelineMenuAnchor)}
+          onClose={handleGuidelineMenuClose}
+          anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
+          transformOrigin={{ vertical: "top", horizontal: "left" }}>
+          {guidelines.map((guideline) => (
+            <MenuItem
+              key={guideline.id}
+              onClick={() => handleSelectGuideline(guideline)}>
+              {guideline.title}
+            </MenuItem>
+          ))}
+        </Menu>
+
+        {showLoading ? (
+          <>
+            <DialogContent className="qam__content">
+              <ChecklistSkeleton />
+            </DialogContent>
+            <LoadingFooter viewOnly={viewOnly} onClose={onClose} />
+          </>
+        ) : (
+          <QAAnswerForm
+            key={formKey}
+            checklistId={checklistId}
+            checklistDetail={checklistDetail}
+            week={week}
+            month={month}
+            year={year}
+            viewOnly={viewOnly}
+            weeklyRecordData={weeklyRecordData}
+            scoreGradingOptions={scoreGradingOptions}
+            onClose={onClose}
+          />
+        )}
+      </Dialog>
+
+      <GuidelineFileDialog
+        open={guidelineFileDialogOpen}
+        onClose={() => setGuidelineFileDialogOpen(false)}
+        fileUrl={selectedGuideline?.file_url}
+        filename={selectedGuideline?.filename}
+      />
+    </>
   );
 };
 

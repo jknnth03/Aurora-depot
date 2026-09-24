@@ -48,7 +48,7 @@ const extendedApi = apiSlice.injectEndpoints({
 
     answerChecklist: builder.mutation({
       query: ({ id, body }) => ({
-        url: `store-checklists/${id}/answers`,
+        url: `area-checklists/${id}/answers`,
         method: "POST",
         body,
       }),
@@ -60,10 +60,10 @@ const extendedApi = apiSlice.injectEndpoints({
     }),
 
     skipChecklist: builder.mutation({
-      query: ({ id, reason }) => ({
+      query: ({ id, week, reason }) => ({
         url: `my-checklists/${id}/skip`,
         method: "POST",
-        body: { reason },
+        body: { week, reason },
       }),
       invalidatesTags: (result, error, { id }) => [
         { type: "MyChecklist", id: "LIST" },
@@ -81,6 +81,18 @@ const extendedApi = apiSlice.injectEndpoints({
         { type: "MyChecklist", id },
       ],
     }),
+
+    signWeeklyRecord: builder.mutation({
+      query: ({ id, recordId, body }) => ({
+        url: `my-checklists/${id}/weekly-records/${recordId}/signature`,
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: (result, error, { id, recordId }) => [
+        { type: "MyChecklist", id },
+        { type: "MyChecklistWeeklyRecord", id: recordId },
+      ],
+    }),
   }),
 });
 
@@ -92,6 +104,7 @@ export const {
   useAnswerChecklistMutation,
   useSkipChecklistMutation,
   useUndoSkipChecklistMutation,
+  useSignWeeklyRecordMutation,
   useLazyGetMyChecklistsQuery,
   useLazyGetMyChecklistScoreQuery,
 } = extendedApi;

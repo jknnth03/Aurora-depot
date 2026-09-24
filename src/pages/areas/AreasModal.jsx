@@ -23,7 +23,7 @@ import {
   useCreateAreaMutation,
   useUpdateAreaMutation,
 } from "../../features/api/areas/areasApi";
-import { useGetLocationsQuery } from "../../features/api/locations/locationsApi";
+import { useGetDepartmentsQuery } from "../../features/api/departments/departmentsApi";
 import { useGetUsersQuery } from "../../features/api/usersmanagement/usersApi";
 import ConfirmDialog from "../../reusable-components/confirm-dialog/ConfirmDialog";
 import "./AreasModal.scss";
@@ -31,10 +31,10 @@ import "./AreasModal.scss";
 const schema = yup.object({
   code: yup.string().required("Code is required."),
   name: yup.string().required("Area name is required."),
-  location_id: yup
+  department_id: yup
     .number()
-    .typeError("Location is required.")
-    .required("Location is required."),
+    .typeError("Department is required.")
+    .required("Department is required."),
   area_head_id: yup.number().nullable().typeError("Invalid area head."),
 });
 
@@ -81,9 +81,9 @@ const getUserOptionLabel = (user) => {
   return parts.join(" ") || user.username || `User #${user.id}`;
 };
 
-const getLocationOptionLabel = (location) => {
-  if (!location) return "";
-  return location.name ?? `Location #${location.id}`;
+const getDepartmentOptionLabel = (department) => {
+  if (!department) return "";
+  return department.name ?? `Department #${department.id}`;
 };
 
 const SearchSelect = ({
@@ -196,12 +196,12 @@ const AreasModal = ({ open, onClose, selectedId = null }) => {
     },
   );
 
-  const { data: locationsData, isFetching: locationsLoading } =
-    useGetLocationsQuery(
+  const { data: departmentsData, isFetching: departmentsLoading } =
+    useGetDepartmentsQuery(
       { status: "active", page: 1, per_page: 1000 },
       { skip: !open },
     );
-  const locationOptions = locationsData?.data?.data ?? [];
+  const departmentOptions = departmentsData?.data?.data ?? [];
 
   const { data: usersData, isFetching: usersLoading } = useGetUsersQuery(
     { status: "active", page: 1, per_page: 1000 },
@@ -220,7 +220,7 @@ const AreasModal = ({ open, onClose, selectedId = null }) => {
     defaultValues: {
       code: "",
       name: "",
-      location_id: "",
+      department_id: "",
       area_head_id: null,
     },
   });
@@ -233,7 +233,7 @@ const AreasModal = ({ open, onClose, selectedId = null }) => {
     if (!selectedId) {
       setMode("add");
       setSelectedRow(null);
-      reset({ code: "", name: "", location_id: "", area_head_id: null });
+      reset({ code: "", name: "", department_id: "", area_head_id: null });
     } else {
       setMode("view");
     }
@@ -246,7 +246,7 @@ const AreasModal = ({ open, onClose, selectedId = null }) => {
       reset({
         code: data?.code ?? "",
         name: data?.name ?? "",
-        location_id: data?.location?.id ?? "",
+        department_id: data?.department?.id ?? "",
         area_head_id: data?.area_head?.id ?? null,
       });
     }
@@ -355,10 +355,10 @@ const AreasModal = ({ open, onClose, selectedId = null }) => {
               </div>
               <div className="am__field" style={{ marginTop: 12 }}>
                 <div className="am__input-wrap am__input-wrap--disabled">
-                  <label className="am__label">Location</label>
+                  <label className="am__label">Department</label>
                   <input
                     type="text"
-                    value={selectedRow?.location?.name ?? "-"}
+                    value={selectedRow?.department?.name ?? "-"}
                     disabled
                     readOnly
                   />
@@ -421,28 +421,28 @@ const AreasModal = ({ open, onClose, selectedId = null }) => {
 
               <div className="am__field" style={{ marginTop: 12 }}>
                 <label className="am__label am__label--static">
-                  Location
+                  Department
                   <span className="am__required">*</span>
                 </label>
                 <Controller
-                  name="location_id"
+                  name="department_id"
                   control={control}
                   render={({ field }) => (
                     <SearchSelect
                       value={field.value}
                       onChange={field.onChange}
-                      options={locationOptions}
-                      getOptionLabel={getLocationOptionLabel}
-                      loading={locationsLoading}
-                      error={!!errors.location_id}
-                      placeholder="Select location"
+                      options={departmentOptions}
+                      getOptionLabel={getDepartmentOptionLabel}
+                      loading={departmentsLoading}
+                      error={!!errors.department_id}
+                      placeholder="Select department"
                     />
                   )}
                 />
-                {errors.location_id && (
+                {errors.department_id && (
                   <p className="am__error">
                     <ReportProblemIcon />
-                    {errors.location_id?.message}
+                    {errors.department_id?.message}
                   </p>
                 )}
               </div>

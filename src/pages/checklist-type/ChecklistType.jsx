@@ -3,7 +3,9 @@ import { useRememberQueryParams } from "../../hooks/useRememberQueryParams";
 import useDebounce from "../../hooks/useDebounce";
 import ChecklistIcon from "@mui/icons-material/Checklist";
 import AddIcon from "@mui/icons-material/Add";
+import RemoveRedEyeIcon from "@mui/icons-material/RemoveRedEye";
 import Chip from "@mui/material/Chip";
+import IconButton from "@mui/material/IconButton";
 import PageContainer from "../../reusable-components/page-container/PageContainer";
 import UniversalTable from "../../reusable-components/universal-table/UniversalTable";
 import TablePagination from "../../reusable-components/table-pagination/TablePagination";
@@ -19,6 +21,7 @@ import {
 import ConfirmDialog from "../../reusable-components/confirm-dialog/ConfirmDialog";
 import RowMenu from "../../reusable-components/row-menu/RowMenu";
 import ChecklistTypeModal from "./ChecklistTypeModal";
+import DepartmentDialog from "./DepartmentDialog";
 import {
   getChipBg,
   getChipTextColor,
@@ -46,6 +49,8 @@ const ChecklistType = () => {
   const [toArchive, setToArchive] = useState(null);
   const [restoreConfirmOpen, setRestoreConfirmOpen] = useState(false);
   const [toRestore, setToRestore] = useState(null);
+  const [departmentDialogOpen, setDepartmentDialogOpen] = useState(false);
+  const [selectedDepartments, setSelectedDepartments] = useState([]);
 
   const currentStatus = showArchived ? "inactive" : "active";
 
@@ -126,6 +131,11 @@ const ChecklistType = () => {
       console.error("Archive failed:", err);
     }
   };
+  const handleViewDepartments = (e, departments) => {
+    e.stopPropagation();
+    setSelectedDepartments(departments ?? []);
+    setDepartmentDialogOpen(true);
+  };
 
   const renderStatusChip = (isArchivedRow) => {
     const chipId = isArchivedRow ? "chip-inactive" : "chip-active";
@@ -141,8 +151,28 @@ const ChecklistType = () => {
     );
   };
 
+  const renderDepartmentsCell = (departments) => {
+    if (!departments?.length) return "-";
+    return (
+      <div className="checklist-type__department-cell">
+        <IconButton
+          className="checklist-type__department-icon"
+          size="small"
+          onClick={(e) => handleViewDepartments(e, departments)}>
+          <RemoveRedEyeIcon fontSize="small" />
+        </IconButton>
+      </div>
+    );
+  };
+
   const columns = [
     { key: "name", label: "Name", sortable: true },
+    {
+      key: "departments",
+      label: "Department",
+      sortable: false,
+      render: (val) => renderDepartmentsCell(val),
+    },
     {
       key: "deleted_at",
       label: "Status",
@@ -215,6 +245,12 @@ const ChecklistType = () => {
         open={modalOpen}
         onClose={handleClose}
         selectedId={selectedId}
+      />
+
+      <DepartmentDialog
+        open={departmentDialogOpen}
+        onClose={() => setDepartmentDialogOpen(false)}
+        departments={selectedDepartments}
       />
 
       <ConfirmDialog

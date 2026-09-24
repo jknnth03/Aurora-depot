@@ -1,6 +1,6 @@
 @use "../../styles/colors" as *;
 
-.lm {
+.dm {
   &__paper {
     border-radius: 14px !important;
     font-family: "Poppins", sans-serif;
@@ -167,14 +167,14 @@
     transition: border-color 0.2s;
     position: relative;
 
-    .lm__label {
+    .dm__label {
       background: #fff;
     }
 
     &:focus-within {
       border-color: $primary-main;
 
-      .lm__label {
+      .dm__label {
         color: $primary-main;
       }
     }
@@ -182,7 +182,7 @@
     &--error {
       border-color: $status-error !important;
 
-      .lm__label {
+      .dm__label {
         color: $status-error !important;
       }
     }
@@ -193,7 +193,7 @@
       cursor: default;
       pointer-events: none;
 
-      .lm__label {
+      .dm__label {
         background: $bg-main;
       }
 
@@ -201,7 +201,7 @@
         background: rgba(255, 255, 255, 0.02) !important;
         border-color: rgba(255, 255, 255, 0.06) !important;
 
-        .lm__label {
+        .dm__label {
           background: $bg-main;
         }
       }
@@ -215,7 +215,7 @@
         }
       }
 
-      .lm__label {
+      .dm__label {
         color: $text-muted !important;
         opacity: 0.7;
       }
@@ -358,14 +358,14 @@
   &__toggle-input {
     display: none;
 
-    &:checked + .lm__toggle-track {
+    &:checked + .dm__toggle-track {
       background: $primary-main;
 
       [data-theme="dark"] & {
         background: $secondary-main;
       }
 
-      .lm__toggle-thumb {
+      .dm__toggle-thumb {
         transform: translateX(16px);
       }
     }
