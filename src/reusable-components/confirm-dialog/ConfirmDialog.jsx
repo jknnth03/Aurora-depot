@@ -1,3 +1,4 @@
+import { useState } from "react";
 import Dialog from "@mui/material/Dialog";
 import DialogContent from "@mui/material/DialogContent";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
@@ -12,12 +13,35 @@ const ConfirmDialog = ({
   confirmLabel = "Confirm",
   cancelLabel = "Cancel",
   isLoading = false,
+  isFetching = false,
   confirmVariant = "danger",
 }) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // loading kapag: may tumatakbong onConfirm, o may ipinasang isLoading/isFetching
+  const loading = isSubmitting || isLoading || isFetching;
+
+  const handleConfirm = async () => {
+    if (loading || !onConfirm) return;
+
+    setIsSubmitting(true);
+    try {
+      await onConfirm();
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // bawal isara habang naglo-load (backdrop click / Esc / cancel)
+  const handleClose = (...args) => {
+    if (loading) return;
+    onClose?.(...args);
+  };
+
   return (
     <Dialog
       open={open}
-      onClose={onClose}
+      onClose={handleClose}
       maxWidth="xs"
       fullWidth
       PaperProps={{ className: "cd__paper" }}>
@@ -32,15 +56,15 @@ const ConfirmDialog = ({
         <div className="cd__footer">
           <button
             className="cd__cancel-btn"
-            onClick={onClose}
-            disabled={isLoading}>
+            onClick={handleClose}
+            disabled={loading}>
             {cancelLabel}
           </button>
           <button
             className={`cd__confirm-btn cd__confirm-btn--${confirmVariant}`}
-            onClick={onConfirm}
-            disabled={isLoading}>
-            {isLoading ? "Processing..." : confirmLabel}
+            onClick={handleConfirm}
+            disabled={loading}>
+            {loading ? "Processing..." : confirmLabel}
           </button>
         </div>
       </DialogContent>

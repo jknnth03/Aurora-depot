@@ -178,7 +178,7 @@ const NavItem = ({
       </span>
       {sidebarOpen && (
         <>
-          <span className="nav-item__label">{item.displayName}</span>
+          <span className="nav-item__label">{item.name}</span>
           {level > 0 && isActive && (
             <span className="nav-item__check">
               <DoneAllIcon className="nav-item__check-icon" />
@@ -207,7 +207,7 @@ const NavItem = ({
   return (
     <div className="nav-item-wrap">
       {!sidebarOpen && level === 0 ? (
-        <Tooltip title={item.displayName} placement="right">
+        <Tooltip title={item.name} placement="right">
           {itemEl}
         </Tooltip>
       ) : (

@@ -4,16 +4,14 @@ import IconButton from "@mui/material/IconButton";
 import CloseIcon from "@mui/icons-material/Close";
 import RemoveRedEyeIcon from "@mui/icons-material/RemoveRedEye";
 import ApartmentIcon from "@mui/icons-material/Apartment";
-import "./DepartmentDialog.scss";
+import "./UnitsDialog.scss";
 
-const getDepartmentOptionLabel = (department) => {
-  if (!department) return "";
-  return department.code
-    ? `${department.code} - ${department.name}`
-    : (department.name ?? "");
+const getUnitOptionLabel = (unit) => {
+  if (!unit) return "";
+  return unit.code ? `${unit.code} - ${unit.name}` : (unit.name ?? "");
 };
 
-const DepartmentDialog = ({ open, onClose, departments = [] }) => {
+const UnitsDialog = ({ open, onClose, units = [] }) => {
   return (
     <Dialog
       open={open}
@@ -24,7 +22,7 @@ const DepartmentDialog = ({ open, onClose, departments = [] }) => {
       <div className="dd__header">
         <div className="dd__header-title">
           <RemoveRedEyeIcon className="dd__header-icon" />
-          <span>Departments</span>
+          <span>Units</span>
         </div>
         <IconButton className="dd__close" onClick={onClose} size="small">
           <CloseIcon fontSize="small" />
@@ -32,21 +30,21 @@ const DepartmentDialog = ({ open, onClose, departments = [] }) => {
       </div>
 
       <DialogContent className="dd__content">
-        {departments?.length ? (
+        {units?.length ? (
           <ul className="dd__list">
-            {departments.map((department) => (
-              <li key={department.id} className="dd__list-item">
+            {units.map((unit) => (
+              <li key={unit.id} className="dd__list-item">
                 <ApartmentIcon className="dd__list-icon" />
-                <span>{getDepartmentOptionLabel(department)}</span>
+                <span>{getUnitOptionLabel(unit)}</span>
               </li>
             ))}
           </ul>
         ) : (
-          <p className="dd__empty">No departments assigned</p>
+          <p className="dd__empty">No units assigned</p>
         )}
       </DialogContent>
     </Dialog>
   );
 };
 
-export default DepartmentDialog;
+export default UnitsDialog;

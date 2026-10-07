@@ -5,7 +5,7 @@ import SecurityIcon from "@mui/icons-material/Security";
 import VpnKeyIcon from "@mui/icons-material/VpnKey";
 import ListAltIcon from "@mui/icons-material/ListAlt";
 import MapIcon from "@mui/icons-material/Map";
-import ApartmentIcon from "@mui/icons-material/Apartment";
+import AccountTreeIcon from "@mui/icons-material/AccountTree";
 import GradeIcon from "@mui/icons-material/Grade";
 import ChecklistIcon from "@mui/icons-material/Checklist";
 import CloudSyncIcon from "@mui/icons-material/CloudSync";
@@ -87,12 +87,12 @@ export const MODULES = {
     path: "/masterlist",
     icon: <ListAltIcon sx={iconStyles.main} />,
     children: {
-      DEPARTMENTS: {
-        name: "Departments",
-        permissionId: "MASTERLIST.DEPARTMENTS",
-        permissionKey: "department.index",
-        path: "departments",
-        icon: <ApartmentIcon sx={iconStyles.child} />,
+      UNITS: {
+        name: "Units",
+        permissionId: "MASTERLIST.UNITS",
+        permissionKey: "unit.view",
+        path: "units",
+        icon: <AccountTreeIcon sx={iconStyles.child} />,
       },
       AREAS: {
         name: "Areas",

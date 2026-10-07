@@ -1,16 +1,13 @@
 @use "../../styles/colors" as *;
 
 .checklist-type {
-  &__department-cell {
+  &__units-cell {
     display: flex;
     align-items: center;
-    justify-content: flex-start;
-    width: 100%;
-    padding-left: 16px;
   }
 
-  &__department-icon {
-    color: $primary-main !important;
+  &__units-icon {
+    color: $primary-main;
 
     .MuiSvgIcon-root {
       color: $primary-main !important;
@@ -21,7 +18,7 @@
     }
 
     [data-theme="dark"] & {
-      color: $secondary-main !important;
+      color: $secondary-main;
 
       .MuiSvgIcon-root {
         color: $secondary-main !important;

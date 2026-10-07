@@ -1,0 +1,15 @@
+@use "../../styles/colors" as *;
+
+.units {
+  &__delete-btn {
+    color: $status-error !important;
+
+    .MuiSvgIcon-root {
+      color: $status-error !important;
+    }
+
+    &:hover {
+      background: rgba($status-error, 0.1) !important;
+    }
+  }
+}

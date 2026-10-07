@@ -3,7 +3,7 @@ import PrivateRoutes from "./PrivateRoutes.jsx";
 import PublicRoute from "./PublicRoutes.jsx";
 import Dashboard from "../pages/dashboard/Dashboard.jsx";
 import Login from "../pages/login/Login.jsx";
-import Departments from "../pages/departments/Departments.jsx";
+import Units from "../pages/units/Units.jsx";
 import AreaManagement from "../pages/areas/Areas.jsx";
 import AreaChecklists from "../pages/area-checklists/AreaChecklists.jsx";
 import Users from "../pages/usermanagement/users/Users.jsx";
@@ -65,11 +65,11 @@ export const ROUTES = [
       },
 
       {
-        id: "MASTERLIST.DEPARTMENTS",
-        path: `${MODULES.MASTERLIST.path}/${MODULES.MASTERLIST.children.DEPARTMENTS.path}`,
-        element: <Departments />,
+        id: "MASTERLIST.UNITS",
+        path: `${MODULES.MASTERLIST.path}/${MODULES.MASTERLIST.children.UNITS.path}`,
+        element: <Units />,
         handle: {
-          permission: MODULES.MASTERLIST.children.DEPARTMENTS.permissionId,
+          permission: MODULES.MASTERLIST.children.UNITS.permissionId,
         },
       },
       {

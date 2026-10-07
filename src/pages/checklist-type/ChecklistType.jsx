@@ -21,7 +21,7 @@ import {
 import ConfirmDialog from "../../reusable-components/confirm-dialog/ConfirmDialog";
 import RowMenu from "../../reusable-components/row-menu/RowMenu";
 import ChecklistTypeModal from "./ChecklistTypeModal";
-import DepartmentDialog from "./DepartmentDialog";
+import UnitsDialog from "./UnitsDialog";
 import {
   getChipBg,
   getChipTextColor,
@@ -49,8 +49,8 @@ const ChecklistType = () => {
   const [toArchive, setToArchive] = useState(null);
   const [restoreConfirmOpen, setRestoreConfirmOpen] = useState(false);
   const [toRestore, setToRestore] = useState(null);
-  const [departmentDialogOpen, setDepartmentDialogOpen] = useState(false);
-  const [selectedDepartments, setSelectedDepartments] = useState([]);
+  const [unitsDialogOpen, setUnitsDialogOpen] = useState(false);
+  const [selectedUnits, setSelectedUnits] = useState([]);
 
   const currentStatus = showArchived ? "inactive" : "active";
 
@@ -131,10 +131,10 @@ const ChecklistType = () => {
       console.error("Archive failed:", err);
     }
   };
-  const handleViewDepartments = (e, departments) => {
+  const handleViewUnits = (e, units) => {
     e.stopPropagation();
-    setSelectedDepartments(departments ?? []);
-    setDepartmentDialogOpen(true);
+    setSelectedUnits(units ?? []);
+    setUnitsDialogOpen(true);
   };
 
   const renderStatusChip = (isArchivedRow) => {
@@ -151,14 +151,14 @@ const ChecklistType = () => {
     );
   };
 
-  const renderDepartmentsCell = (departments) => {
-    if (!departments?.length) return "-";
+  const renderUnitsCell = (units) => {
+    if (!units?.length) return "-";
     return (
-      <div className="checklist-type__department-cell">
+      <div className="checklist-type__units-cell">
         <IconButton
-          className="checklist-type__department-icon"
+          className="checklist-type__units-icon"
           size="small"
-          onClick={(e) => handleViewDepartments(e, departments)}>
+          onClick={(e) => handleViewUnits(e, units)}>
           <RemoveRedEyeIcon fontSize="small" />
         </IconButton>
       </div>
@@ -168,10 +168,10 @@ const ChecklistType = () => {
   const columns = [
     { key: "name", label: "Name", sortable: true },
     {
-      key: "departments",
-      label: "Department",
+      key: "units",
+      label: "Unit",
       sortable: false,
-      render: (val) => renderDepartmentsCell(val),
+      render: (val) => renderUnitsCell(val),
     },
     {
       key: "deleted_at",
@@ -247,10 +247,10 @@ const ChecklistType = () => {
         selectedId={selectedId}
       />
 
-      <DepartmentDialog
-        open={departmentDialogOpen}
-        onClose={() => setDepartmentDialogOpen(false)}
-        departments={selectedDepartments}
+      <UnitsDialog
+        open={unitsDialogOpen}
+        onClose={() => setUnitsDialogOpen(false)}
+        units={selectedUnits}
       />
 
       <ConfirmDialog

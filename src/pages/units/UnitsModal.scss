@@ -1,6 +1,6 @@
 @use "../../styles/colors" as *;
 
-.dm {
+.um {
   &__paper {
     border-radius: 14px !important;
     font-family: "Poppins", sans-serif;
@@ -84,17 +84,6 @@
     margin-bottom: 16px;
   }
 
-  &__row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-
-  &__field--grow {
-    flex: 1;
-    min-width: 0;
-  }
-
   &__group-label {
     font-size: 0.68rem;
     font-weight: 600;
@@ -133,18 +122,6 @@
       background: $bg-main;
       color: rgba(255, 255, 255, 0.4);
     }
-
-    &--static {
-      position: static;
-      background: transparent !important;
-      padding: 0;
-      margin-bottom: 6px;
-      display: inline-flex;
-
-      [data-theme="dark"] & {
-        background: transparent !important;
-      }
-    }
   }
 
   &__required {
@@ -167,14 +144,14 @@
     transition: border-color 0.2s;
     position: relative;
 
-    .dm__label {
+    .um__label {
       background: #fff;
     }
 
     &:focus-within {
       border-color: $primary-main;
 
-      .dm__label {
+      .um__label {
         color: $primary-main;
       }
     }
@@ -182,7 +159,7 @@
     &--error {
       border-color: $status-error !important;
 
-      .dm__label {
+      .um__label {
         color: $status-error !important;
       }
     }
@@ -193,15 +170,17 @@
       cursor: default;
       pointer-events: none;
 
-      .dm__label {
+      .um__label {
         background: $bg-main;
+        color: $text-muted !important;
+        opacity: 0.7;
       }
 
       [data-theme="dark"] & {
         background: rgba(255, 255, 255, 0.02) !important;
         border-color: rgba(255, 255, 255, 0.06) !important;
 
-        .dm__label {
+        .um__label {
           background: $bg-main;
         }
       }
@@ -213,11 +192,6 @@
         [data-theme="dark"] & {
           color: rgba(255, 255, 255, 0.4) !important;
         }
-      }
-
-      .dm__label {
-        color: $text-muted !important;
-        opacity: 0.7;
       }
     }
 
@@ -283,10 +257,6 @@
     display: block !important;
     flex: none !important;
     min-width: unset !important;
-
-    &--tall {
-      height: 80px !important;
-    }
   }
 
   &__skeleton-footer {
@@ -331,243 +301,5 @@
       border-radius: 8px !important;
       box-sizing: border-box;
     }
-  }
-
-  &__toggle-row {
-    display: flex;
-    align-items: center;
-    flex-shrink: 0;
-  }
-
-  &__toggle-label {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 0.78rem;
-    font-weight: 500;
-    color: $text-primary;
-    font-family: "Poppins", sans-serif;
-    cursor: pointer;
-    white-space: nowrap;
-
-    [data-theme="dark"] & {
-      color: rgba(255, 255, 255, 0.85);
-    }
-  }
-
-  &__toggle-input {
-    display: none;
-
-    &:checked + .dm__toggle-track {
-      background: $primary-main;
-
-      [data-theme="dark"] & {
-        background: $secondary-main;
-      }
-
-      .dm__toggle-thumb {
-        transform: translateX(16px);
-      }
-    }
-  }
-
-  &__toggle-track {
-    position: relative;
-    width: 34px;
-    height: 18px;
-    border-radius: 999px;
-    background: $border-color;
-    transition: background 0.2s;
-
-    [data-theme="dark"] & {
-      background: rgba(255, 255, 255, 0.15);
-    }
-  }
-
-  &__toggle-thumb {
-    position: absolute;
-    top: 2px;
-    left: 2px;
-    width: 14px;
-    height: 14px;
-    border-radius: 50%;
-    background: #fff;
-    transition: transform 0.2s;
-  }
-
-  &__ac {
-    position: relative;
-    border: 1.5px solid $border-color;
-    border-radius: 8px;
-    background: #fff;
-    transition: border-color 0.2s;
-
-    [data-theme="dark"] & {
-      background: $bg-main;
-      border-color: rgba(255, 255, 255, 0.12);
-    }
-
-    &:hover {
-      border-color: $primary-main;
-
-      [data-theme="dark"] & {
-        border-color: $secondary-main;
-      }
-    }
-
-    &--error {
-      border-color: $status-error !important;
-    }
-
-    &--open {
-      border-color: $primary-main;
-
-      [data-theme="dark"] & {
-        border-color: $secondary-main;
-      }
-    }
-  }
-
-  &__ac-box {
-    min-height: 44px;
-    padding: 0 12px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-  }
-
-  &__ac-arrow {
-    display: flex;
-    align-items: center;
-    flex-shrink: 0;
-    color: $text-muted;
-
-    svg {
-      font-size: 1.2rem !important;
-    }
-  }
-
-  &__ac-search-wrap {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    width: 100%;
-    color: $text-muted;
-  }
-
-  &__ac-input {
-    flex: 1;
-    border: none;
-    background: transparent;
-    outline: none;
-    font-family: "Poppins", sans-serif;
-    font-size: 0.82rem;
-    color: $text-primary;
-    padding: 0;
-
-    &::placeholder {
-      color: $text-muted;
-    }
-
-    [data-theme="dark"] & {
-      color: rgba(255, 255, 255, 0.85);
-    }
-  }
-
-  &__ac-value {
-    font-size: 0.82rem;
-    font-weight: 400;
-    color: $text-primary;
-    font-family: "Poppins", sans-serif;
-
-    [data-theme="dark"] & {
-      color: rgba(255, 255, 255, 0.85);
-    }
-  }
-
-  &__ac-placeholder {
-    font-size: 0.82rem;
-    color: $text-muted;
-    font-family: "Poppins", sans-serif;
-  }
-
-  &__ac-dropdown {
-    position: static;
-    margin-top: 4px;
-    border: 1.5px solid $border-color;
-    border-top: none;
-    border-radius: 0 0 8px 8px;
-    background: #fff;
-    overflow: hidden;
-
-    [data-theme="dark"] & {
-      background: $bg-main;
-      border-color: rgba(255, 255, 255, 0.12);
-    }
-  }
-
-  &__ac-options {
-    max-height: 220px;
-    overflow-y: auto;
-
-    &::-webkit-scrollbar {
-      width: 4px;
-    }
-    &::-webkit-scrollbar-thumb {
-      background: $primary-main;
-      border-radius: 4px;
-    }
-    &::-webkit-scrollbar-track {
-      background: transparent;
-    }
-  }
-
-  &__ac-option {
-    display: flex;
-    align-items: center;
-    padding: 10px 14px;
-    font-size: 0.8rem;
-    font-family: "Poppins", sans-serif;
-    color: $text-primary;
-    cursor: pointer;
-    transition:
-      background-color 0.12s,
-      color 0.12s;
-
-    &:hover {
-      background-color: rgba($primary-main, 0.1) !important;
-      color: $primary-main;
-    }
-
-    &--selected {
-      color: $primary-main;
-      font-weight: 600;
-      background-color: rgba($primary-main, 0.05);
-
-      [data-theme="dark"] & {
-        color: $secondary-main;
-        background-color: rgba($secondary-main, 0.08);
-      }
-    }
-
-    [data-theme="dark"] & {
-      color: rgba(255, 255, 255, 0.85);
-
-      &:hover {
-        background-color: rgba($secondary-main, 0.14) !important;
-        color: $secondary-main;
-      }
-    }
-  }
-
-  &__ac-empty {
-    font-size: 0.78rem;
-    color: $text-muted;
-    font-family: "Poppins", sans-serif;
-    text-align: center;
-    padding: 16px;
-    margin: 0;
   }
 }

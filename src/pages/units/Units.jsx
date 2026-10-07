@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useRememberQueryParams } from "../../hooks/useRememberQueryParams";
 import useDebounce from "../../hooks/useDebounce";
-import ApartmentIcon from "@mui/icons-material/Apartment";
+import AccountTreeIcon from "@mui/icons-material/AccountTree";
 import AddIcon from "@mui/icons-material/Add";
 import Chip from "@mui/material/Chip";
 import PageContainer from "../../reusable-components/page-container/PageContainer";
@@ -13,12 +13,12 @@ import {
   ArchivedButton,
 } from "../../reusable-components/table-search/TableSearch";
 import {
-  useGetDepartmentsQuery,
-  useToggleArchiveDepartmentMutation,
-} from "../../features/api/departments/departmentsApi";
+  useGetUnitsQuery,
+  useToggleArchiveUnitMutation,
+} from "../../features/api/units/unitsApi";
 import ConfirmDialog from "../../reusable-components/confirm-dialog/ConfirmDialog";
 import RowMenu from "../../reusable-components/row-menu/RowMenu";
-import DepartmentsModal from "./DepartmentsModal";
+import UnitsModal from "./UnitsModal";
 import {
   getChipBg,
   getChipTextColor,
@@ -26,9 +26,9 @@ import {
   useChipColors,
   CHIP_SX,
 } from "../../components/accountmenu/ChipColorPickerUtils";
-import "./Departments.scss";
+import "./Units.scss";
 
-const Departments = () => {
+const Units = () => {
   useChipColors();
 
   const [page, setPage] = useState(1);
@@ -49,15 +49,15 @@ const Departments = () => {
 
   const currentStatus = showArchived ? "inactive" : "active";
 
-  const { data, isFetching, error } = useGetDepartmentsQuery({
+  const { data, isFetching, error } = useGetUnitsQuery({
     status: currentStatus,
     search: debouncedSearch,
     sorts: sortBy,
     page,
     per_page: rowsPerPage,
   });
-  const [toggleArchiveDepartment, { isLoading: isArchiving }] =
-    useToggleArchiveDepartmentMutation();
+  const [toggleArchiveUnit, { isLoading: isArchiving }] =
+    useToggleArchiveUnitMutation();
 
   const is404 = error?.status === 404;
   const tableData = is404 ? [] : (data?.data?.data ?? []);
@@ -83,13 +83,10 @@ const Departments = () => {
   };
   const handleConfirmRestore = async () => {
     try {
-      await toggleArchiveDepartment(toRestore.id).unwrap();
-      window.__snackbar__?.enqueueSnackbar(
-        "Department restored successfully.",
-        {
-          variant: "success",
-        },
-      );
+      await toggleArchiveUnit(toRestore.id).unwrap();
+      window.__snackbar__?.enqueueSnackbar("Unit restored successfully.", {
+        variant: "success",
+      });
       setRestoreConfirmOpen(false);
       setToRestore(null);
       resetAfterRestore();
@@ -116,30 +113,16 @@ const Departments = () => {
   };
   const handleConfirmArchive = async () => {
     try {
-      await toggleArchiveDepartment(toArchive.id).unwrap();
-      window.__snackbar__?.enqueueSnackbar(
-        "Department archived successfully.",
-        {
-          variant: "success",
-        },
-      );
+      await toggleArchiveUnit(toArchive.id).unwrap();
+      window.__snackbar__?.enqueueSnackbar("Unit archived successfully.", {
+        variant: "success",
+      });
       setConfirmOpen(false);
       setToArchive(null);
       resetAfterArchive();
     } catch (err) {
       console.error("Archive failed:", err);
     }
-  };
-
-  const getDepartmentHeadName = (departmentHead) => {
-    if (!departmentHead) return "-";
-    const parts = [
-      departmentHead.first_name,
-      departmentHead.middle_name,
-      departmentHead.last_name,
-      departmentHead.suffix,
-    ].filter(Boolean);
-    return parts.join(" ");
   };
 
   const renderStatusChip = (isArchivedRow) => {
@@ -157,18 +140,7 @@ const Departments = () => {
   };
 
   const columns = [
-    { key: "code", label: "Code", sortable: true },
     { key: "name", label: "Name", sortable: true },
-    {
-      key: "department_head",
-      label: "Department Head",
-      sortable: false,
-      render: (val) => (
-        <span className="departments__department-head-cell">
-          {getDepartmentHeadName(val)}
-        </span>
-      ),
-    },
     {
       key: "is_archived",
       label: "Status",
@@ -180,13 +152,13 @@ const Departments = () => {
   return (
     <>
       <PageContainer
-        title="Departments"
-        titleIcon={<ApartmentIcon />}
+        title="Units"
+        titleIcon={<AccountTreeIcon />}
         isEmpty={!isFetching && (tableData.length === 0 || is404)}
         titleAction={
           <UniversalButton
-            label="Add Department"
-            tooltip="Click this button to add a new department"
+            label="Add Unit"
+            tooltip="Click this button to add a new unit"
             icon={<AddIcon />}
             onClick={handleAdd}
           />
@@ -206,7 +178,7 @@ const Departments = () => {
             <TableSearchField
               value={search}
               onChange={handleSearch}
-              placeholder="Search departments..."
+              placeholder="Search units..."
             />
           </>
         }
@@ -237,7 +209,7 @@ const Departments = () => {
         />
       </PageContainer>
 
-      <DepartmentsModal
+      <UnitsModal
         open={modalOpen}
         onClose={handleClose}
         selectedId={selectedId}
@@ -251,8 +223,8 @@ const Departments = () => {
         }}
         onConfirm={handleConfirmArchive}
         isLoading={isArchiving}
-        title="Archive Department"
-        message={`Are you sure you want to archive "${toArchive?.name}"? This action will set the department as inactive.`}
+        title="Archive Unit"
+        message={`Are you sure you want to archive "${toArchive?.name}"? This action will set the unit as inactive.`}
       />
 
       <ConfirmDialog
@@ -263,11 +235,11 @@ const Departments = () => {
         }}
         onConfirm={handleConfirmRestore}
         isLoading={isArchiving}
-        title="Restore Department"
+        title="Restore Unit"
         message={`Are you sure you want to restore "${toRestore?.name}"? This will set it back to active.`}
       />
     </>
   );
 };
 
-export default Departments;
+export default Units;

@@ -28,6 +28,7 @@ import {
   useGetMyChecklistWeeklyRecordQuery,
 } from "../../features/api/qa-dashboard/qaDashboardApi";
 import { useGetScoreGradingsQuery } from "../../features/api/score-grading/scoreGradingApi";
+import { useGetGuidelinesQuery } from "../../features/api/guidelines/guidelinesApi";
 import "./QAAnswerModal.scss";
 
 const API_ORIGIN = (() => {
@@ -1264,6 +1265,11 @@ const QAAnswerModal = ({
       { skip: !open || !checklistId || !weeklyRecordId },
     );
 
+  const { data: guidelinesData } = useGetGuidelinesQuery(
+    { status: "active", per_page: 100 },
+    { skip: !open },
+  );
+
   const rawScoreGradingOptions = Array.isArray(scoreGradingData?.data?.data)
     ? scoreGradingData.data.data
     : Array.isArray(scoreGradingData?.data)
@@ -1282,7 +1288,31 @@ const QAAnswerModal = ({
   }-${weeklyRecordData ? "loaded" : "pending"}`;
 
   const weeklyRecord = weeklyRecordData?.data ?? weeklyRecordData;
-  const guidelines = weeklyRecord?.guidelines ?? [];
+
+  const areaName = String(
+    checklistDetail?.area?.name ??
+      weeklyRecord?.area?.name ??
+      checklistDetail?.checklist?.name ??
+      "",
+  ).toUpperCase();
+
+  const allGuidelines = Array.isArray(guidelinesData?.data?.data)
+    ? guidelinesData.data.data
+    : Array.isArray(guidelinesData?.data)
+      ? guidelinesData.data
+      : [];
+
+  const checklistGuidelines = allGuidelines.filter(
+    (guideline) =>
+      guideline.applies_to_all ||
+      (guideline.checklists ?? []).some(
+        (checklist) => String(checklist.id) === String(checklistId),
+      ),
+  );
+
+  const guidelines = weeklyRecord?.guidelines?.length
+    ? weeklyRecord.guidelines
+    : checklistGuidelines;
 
   const [guidelineMenuAnchor, setGuidelineMenuAnchor] = useState(null);
   const [selectedGuideline, setSelectedGuideline] = useState(null);
@@ -1332,8 +1362,16 @@ const QAAnswerModal = ({
               <CloseIcon fontSize="small" />
             </IconButton>
           </div>
-          <div className="qam__header-sub">
-            <span className="qam__name-value">
+          <div
+            className="qam__header-sub"
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr auto 1fr",
+              alignItems: "center",
+              columnGap: 16,
+            }}>
+            <span className="qam__name-value">{areaName}</span>
+            <span className="qam__name-value" style={{ textAlign: "center" }}>
               {checklistDetail?.checklist?.name}
             </span>
             <Button
@@ -1341,6 +1379,7 @@ const QAAnswerModal = ({
               size="small"
               startIcon={<MenuBookIcon fontSize="small" />}
               className="qam__btn-guideline"
+              style={{ justifySelf: "end" }}
               onClick={handleGuidelineClick}
               disabled={guidelines.length === 0}>
               VIEW GUIDELINE

@@ -24,20 +24,18 @@ import {
   useCreateChecklistTypeMutation,
   useUpdateChecklistTypeMutation,
 } from "../../features/api/checklist-type/checklistTypeApi";
-import { useGetDepartmentsQuery } from "../../features/api/departments/departmentsApi";
+import { useGetUnitsQuery } from "../../features/api/units/unitsApi";
 import ConfirmDialog from "../../reusable-components/confirm-dialog/ConfirmDialog";
 import "./ChecklistTypeModal.scss";
 
 const schema = yup.object({
   name: yup.string().required("Checklist type name is required."),
-  department_ids: yup.array().of(yup.number()).nullable(),
+  unit_ids: yup.array().of(yup.number()).nullable(),
 });
 
-const getDepartmentOptionLabel = (department) => {
-  if (!department) return "";
-  return department.code
-    ? `${department.code} - ${department.name}`
-    : (department.name ?? "");
+const getUnitOptionLabel = (unit) => {
+  if (!unit) return "";
+  return unit.code ? `${unit.code} - ${unit.name}` : (unit.name ?? "");
 };
 
 const MultiSearchSelect = ({
@@ -200,10 +198,11 @@ const ChecklistTypeModal = ({ open, onClose, selectedId = null }) => {
       skip: !selectedId || !open,
     });
 
-  const { data: departmentsData, isFetching: departmentsLoading } =
-    useGetDepartmentsQuery({ status: "active" }, { skip: !open });
-  const departmentOptions =
-    departmentsData?.data?.data ?? departmentsData?.data ?? [];
+  const { data: unitsData, isFetching: unitsLoading } = useGetUnitsQuery(
+    { status: "active", page: 1, per_page: 1000 },
+    { skip: !open },
+  );
+  const unitOptions = unitsData?.data?.data ?? [];
 
   const {
     register,
@@ -215,7 +214,7 @@ const ChecklistTypeModal = ({ open, onClose, selectedId = null }) => {
     resolver: yupResolver(schema),
     defaultValues: {
       name: "",
-      department_ids: [],
+      unit_ids: [],
     },
   });
 
@@ -227,7 +226,7 @@ const ChecklistTypeModal = ({ open, onClose, selectedId = null }) => {
     if (!selectedId) {
       setMode("add");
       setSelectedRow(null);
-      reset({ name: "", department_ids: [] });
+      reset({ name: "", unit_ids: [] });
     } else {
       setMode("view");
     }
@@ -239,8 +238,7 @@ const ChecklistTypeModal = ({ open, onClose, selectedId = null }) => {
       setSelectedRow(data);
       reset({
         name: data?.name ?? "",
-        department_ids:
-          data?.departments?.map((department) => department.id) ?? [],
+        unit_ids: data?.units?.map((unit) => unit.id) ?? [],
       });
     }
   }, [open, selectedId, checklistTypeData, reset]);
@@ -341,23 +339,21 @@ const ChecklistTypeModal = ({ open, onClose, selectedId = null }) => {
                 </div>
               </div>
               <div className="ctm__field">
-                <label className="ctm__label ctm__label--static">
-                  Departments
-                </label>
+                <label className="ctm__label ctm__label--static">Units</label>
                 <div className="ctm__ac ctm__ac--disabled">
                   <div className="ctm__ac-box">
                     <div className="ctm__ac-box-content">
-                      {selectedRow?.departments?.length ? (
+                      {selectedRow?.units?.length ? (
                         <div className="ctm__ac-chips">
-                          {selectedRow.departments.map((department) => (
-                            <span key={department.id} className="ctm__ac-chip">
-                              {getDepartmentOptionLabel(department)}
+                          {selectedRow.units.map((unit) => (
+                            <span key={unit.id} className="ctm__ac-chip">
+                              {getUnitOptionLabel(unit)}
                             </span>
                           ))}
                         </div>
                       ) : (
                         <span className="ctm__ac-placeholder">
-                          No departments assigned
+                          No units assigned
                         </span>
                       )}
                     </div>
@@ -395,28 +391,26 @@ const ChecklistTypeModal = ({ open, onClose, selectedId = null }) => {
               </div>
 
               <div className="ctm__field">
-                <label className="ctm__label ctm__label--static">
-                  Departments
-                </label>
+                <label className="ctm__label ctm__label--static">Units</label>
                 <Controller
-                  name="department_ids"
+                  name="unit_ids"
                   control={control}
                   render={({ field: { onChange, value } }) => (
                     <MultiSearchSelect
                       value={value ?? []}
                       onChange={onChange}
-                      options={departmentOptions}
-                      getOptionLabel={getDepartmentOptionLabel}
-                      loading={departmentsLoading}
-                      error={!!errors.department_ids}
-                      placeholder="Select departments"
+                      options={unitOptions}
+                      getOptionLabel={getUnitOptionLabel}
+                      loading={unitsLoading}
+                      error={!!errors.unit_ids}
+                      placeholder="Select units"
                     />
                   )}
                 />
-                {errors.department_ids && (
+                {errors.unit_ids && (
                   <p className="ctm__error">
                     <ReportProblemIcon />
-                    {errors.department_ids?.message}
+                    {errors.unit_ids?.message}
                   </p>
                 )}
               </div>

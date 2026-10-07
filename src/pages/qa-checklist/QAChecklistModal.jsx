@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useMemo } from "react";
-import { useForm, useFieldArray, Controller } from "react-hook-form";
+import { useForm, useFieldArray, useWatch, Controller } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import Dialog from "@mui/material/Dialog";
@@ -33,6 +33,33 @@ import {
 import { useLazyGetChecklistTypesQuery } from "../../features/api/checklist-type/checklistTypeApi";
 import "./QAChecklistModal.scss";
 
+const TOTAL_CENTS = 10000;
+
+const toCents = (value) => Math.round((Number(value) || 0) * 100);
+
+const sumCents = (sections = []) =>
+  sections.reduce((total, section) => total + toCents(section?.percentage), 0);
+
+const formatCents = (cents) => String(Number((cents / 100).toFixed(2)));
+
+const sanitizePercentage = (raw) => {
+  let value = String(raw ?? "").replace(/[^\d.]/g, "");
+  const firstDot = value.indexOf(".");
+  if (firstDot !== -1) {
+    value =
+      value.slice(0, firstDot + 1) +
+      value.slice(firstDot + 1).replace(/\./g, "");
+  }
+  let [whole, decimal] = value.split(".");
+  whole = whole.replace(/^0+(?=\d)/, "");
+  if (decimal !== undefined) {
+    decimal = decimal.slice(0, 2);
+    if (whole === "") whole = "0";
+    return `${whole}.${decimal}`;
+  }
+  return whole;
+};
+
 const questionSchema = yup.object({
   name: yup.string().required("Question is required."),
   is_sanitation: yup.boolean().default(false),
@@ -65,18 +92,17 @@ const schema = yup.object({
     .array()
     .of(sectionSchema)
     .min(1, "At least one section is required.")
-    .test(
-      "sections-sum-100",
-      "Section percentages must add up to 100%.",
-      (value) => {
-        if (!value?.length) return true;
-        const sum = value.reduce(
-          (total, section) => total + (Number(section.percentage) || 0),
-          0,
-        );
-        return sum === 100;
-      },
-    ),
+    .test("sections-sum-100", function (value) {
+      if (!value?.length) return true;
+      const total = sumCents(value);
+      if (total === TOTAL_CENTS) return true;
+      return this.createError({
+        message:
+          total > TOTAL_CENTS
+            ? `Section percentages exceed 100%. Current total: ${formatCents(total)}%.`
+            : `Section percentages must add up to 100%. Current total: ${formatCents(total)}%.`,
+      });
+    }),
 });
 
 const emptyQuestion = () => ({
@@ -170,7 +196,16 @@ const SearchSelect = ({
           </span>
         ) : (
           <span className="qcm__ac-placeholder">
-            {loading ? "Loading..." : placeholder}
+            {loading ? (
+              <Skeleton
+                className="qcm__skeleton"
+                variant="text"
+                width={140}
+                height={22}
+              />
+            ) : (
+              placeholder
+            )}
           </span>
         )}
         <span className="qcm__ac-arrow">
@@ -182,7 +217,22 @@ const SearchSelect = ({
         <div className="qcm__ac-dropdown">
           <div className="qcm__ac-options">
             {loading ? (
-              <p className="qcm__ac-empty">Loading...</p>
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 6,
+                  padding: "8px 12px",
+                }}>
+                {[0, 1, 2, 3].map((item) => (
+                  <Skeleton
+                    key={item}
+                    className="qcm__skeleton"
+                    variant="rounded"
+                    height={28}
+                  />
+                ))}
+              </div>
             ) : filteredOptions.length === 0 ? (
               <p className="qcm__ac-empty">No results found.</p>
             ) : (
@@ -327,6 +377,7 @@ const SectionCard = ({
   });
 
   const sectionErrors = errors?.sections?.[sectionIndex];
+  const percentageField = register(`sections.${sectionIndex}.percentage`);
 
   return (
     <div className="qcm__section-card">
@@ -372,12 +423,16 @@ const SectionCard = ({
               Weight (%)<span className="qcm__required">*</span>
             </label>
             <input
-              type="number"
-              min="0"
-              max="100"
+              type="text"
+              inputMode="decimal"
               placeholder="0"
+              autoComplete="off"
               disabled={isView}
-              {...register(`sections.${sectionIndex}.percentage`)}
+              {...percentageField}
+              onChange={(e) => {
+                e.target.value = sanitizePercentage(e.target.value);
+                percentageField.onChange(e);
+              }}
             />
           </div>
           {sectionErrors?.percentage && (
@@ -490,6 +545,36 @@ const SectionCardSkeleton = () => (
   </div>
 );
 
+const WeightTotal = ({ totalCents }) => {
+  const isComplete = totalCents === TOTAL_CENTS;
+  const isOver = totalCents > TOTAL_CENTS;
+  const color = isComplete ? "#2e7d32" : isOver ? "#d32f2f" : "#f47b20";
+  const remaining = TOTAL_CENTS - totalCents;
+
+  let note = `${formatCents(remaining)}% remaining`;
+  if (isComplete) note = "Complete";
+  if (isOver) note = `${formatCents(Math.abs(remaining))}% over`;
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        padding: "8px 12px",
+        marginTop: 8,
+        borderRadius: 8,
+        border: `1px solid ${color}`,
+        color,
+        fontSize: "0.8rem",
+        fontWeight: 600,
+      }}>
+      <span>Total Weight: {formatCents(totalCents)}% / 100%</span>
+      <span>{note}</span>
+    </div>
+  );
+};
+
 const QAChecklistModal = ({ open, onClose, selectedChecklist = null }) => {
   const [mode, setMode] = useState("add");
 
@@ -514,6 +599,10 @@ const QAChecklistModal = ({ open, onClose, selectedChecklist = null }) => {
     append: appendSection,
     remove: removeSection,
   } = useFieldArray({ control, name: "sections" });
+
+  const watchedSections = useWatch({ control, name: "sections" });
+  const totalCents = sumCents(watchedSections ?? []);
+  const isTotalReached = totalCents >= TOTAL_CENTS;
 
   const [
     triggerGetChecklistTypes,
@@ -616,6 +705,8 @@ const QAChecklistModal = ({ open, onClose, selectedChecklist = null }) => {
 
   const isView = mode === "view";
   const isDetailLoading = checklistDetailLoading && !!selectedChecklist;
+  const sectionsErrorMessage =
+    errors.sections?.message ?? errors.sections?.root?.message;
 
   return (
     <Dialog
@@ -773,10 +864,12 @@ const QAChecklistModal = ({ open, onClose, selectedChecklist = null }) => {
                   />
                 ))}
 
-                {errors.sections?.message && (
+                {!isView && <WeightTotal totalCents={totalCents} />}
+
+                {sectionsErrorMessage && (
                   <p className="qcm__error">
                     <ReportProblemIcon />
-                    {errors.sections.message}
+                    {sectionsErrorMessage}
                   </p>
                 )}
 
@@ -784,6 +877,17 @@ const QAChecklistModal = ({ open, onClose, selectedChecklist = null }) => {
                   <button
                     type="button"
                     className="qcm__add-section-link"
+                    disabled={isTotalReached}
+                    title={
+                      isTotalReached
+                        ? "Total weight already reached 100%."
+                        : undefined
+                    }
+                    style={
+                      isTotalReached
+                        ? { opacity: 0.5, cursor: "not-allowed" }
+                        : undefined
+                    }
                     onClick={() => appendSection(emptySection())}>
                     <AddIcon fontSize="small" /> Add Section
                   </button>

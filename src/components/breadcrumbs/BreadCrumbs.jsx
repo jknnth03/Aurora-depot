@@ -2,13 +2,15 @@ import { useLocation, useNavigate } from "react-router";
 import { MODULES } from "../../config/modules.jsx";
 import "./Breadcrumbs.scss";
 
+const getLabel = (item) => item?.name ?? item?.displayName ?? "NO LABEL";
+
 const buildCrumbs = (pathname) => {
   const crumbs = [];
 
   const dashboard = MODULES.DASHBOARD;
   if (pathname !== "/") {
     crumbs.push({
-      label: dashboard.displayName,
+      label: getLabel(dashboard),
       icon: dashboard.icon,
       path: dashboard.path,
     });
@@ -22,12 +24,12 @@ const buildCrumbs = (pathname) => {
         const fullPath = `${mod.path}/${child.path}`;
         if (pathname === fullPath || pathname.startsWith(fullPath + "/")) {
           crumbs.push({
-            label: mod.displayName,
+            label: getLabel(mod),
             icon: mod.icon,
             path: null,
           });
           crumbs.push({
-            label: child.displayName,
+            label: getLabel(child),
             icon: child.icon,
             path: fullPath,
           });
@@ -42,7 +44,7 @@ const buildCrumbs = (pathname) => {
         : pathname === mod.path || pathname.startsWith(mod.path + "/")
     ) {
       if (mod.permissionId !== "DASHBOARD") {
-        crumbs.push({ label: mod.displayName, icon: mod.icon, path: mod.path });
+        crumbs.push({ label: getLabel(mod), icon: mod.icon, path: mod.path });
       }
       return crumbs;
     }
