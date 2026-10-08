@@ -90,7 +90,7 @@ export const MODULES = {
       UNITS: {
         name: "Units",
         permissionId: "MASTERLIST.UNITS",
-        permissionKey: "unit.view",
+        permissionKey: "unit.index",
         path: "units",
         icon: <AccountTreeIcon sx={iconStyles.child} />,
       },

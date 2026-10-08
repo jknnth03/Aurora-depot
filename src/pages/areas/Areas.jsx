@@ -3,9 +3,7 @@ import { useRememberQueryParams } from "../../hooks/useRememberQueryParams";
 import useDebounce from "../../hooks/useDebounce";
 import MapIcon from "@mui/icons-material/Map";
 import AddIcon from "@mui/icons-material/Add";
-import RemoveRedEyeIcon from "@mui/icons-material/RemoveRedEye";
 import Chip from "@mui/material/Chip";
-import IconButton from "@mui/material/IconButton";
 import PageContainer from "../../reusable-components/page-container/PageContainer";
 import UniversalTable from "../../reusable-components/universal-table/UniversalTable";
 import TablePagination from "../../reusable-components/table-pagination/TablePagination";
@@ -21,7 +19,6 @@ import {
 import ConfirmDialog from "../../reusable-components/confirm-dialog/ConfirmDialog";
 import RowMenu from "../../reusable-components/row-menu/RowMenu";
 import AreasModal from "./AreasModal";
-import AreaUnitsDialog from "./AreaUnitsDialog";
 import {
   getChipBg,
   getChipTextColor,
@@ -49,8 +46,6 @@ const Areas = () => {
   const [toArchive, setToArchive] = useState(null);
   const [restoreConfirmOpen, setRestoreConfirmOpen] = useState(false);
   const [toRestore, setToRestore] = useState(null);
-  const [unitsDialogOpen, setUnitsDialogOpen] = useState(false);
-  const [selectedUnits, setSelectedUnits] = useState([]);
 
   const currentStatus = showArchived ? "inactive" : "active";
 
@@ -130,16 +125,6 @@ const Areas = () => {
     }
   };
 
-  const handleViewUnits = (e, units) => {
-    e.stopPropagation();
-    setSelectedUnits(units ?? []);
-    setUnitsDialogOpen(true);
-  };
-  const handleCloseUnits = () => {
-    setUnitsDialogOpen(false);
-    setSelectedUnits([]);
-  };
-
   const getAreaHeadName = (areaHead) => {
     if (!areaHead) return "-";
     const parts = [
@@ -168,22 +153,6 @@ const Areas = () => {
   const columns = [
     { key: "code", label: "Code", sortable: true },
     { key: "name", label: "Name", sortable: true },
-    {
-      key: "units",
-      label: "Units",
-      sortable: false,
-      render: (val) =>
-        val?.length ? (
-          <IconButton
-            size="small"
-            onClick={(e) => handleViewUnits(e, val)}
-            sx={{ color: "primary.main" }}>
-            <RemoveRedEyeIcon fontSize="small" />
-          </IconButton>
-        ) : (
-          "-"
-        ),
-    },
     {
       key: "area_head",
       label: "Area Head",
@@ -262,12 +231,6 @@ const Areas = () => {
         open={modalOpen}
         onClose={handleClose}
         selectedId={selectedId}
-      />
-
-      <AreaUnitsDialog
-        open={unitsDialogOpen}
-        onClose={handleCloseUnits}
-        units={selectedUnits}
       />
 
       <ConfirmDialog

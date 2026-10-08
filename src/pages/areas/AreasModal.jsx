@@ -23,7 +23,6 @@ import {
   useCreateAreaMutation,
   useUpdateAreaMutation,
 } from "../../features/api/areas/areasApi";
-import { useGetUnitsQuery } from "../../features/api/units/unitsApi";
 import { useGetUsersQuery } from "../../features/api/usersmanagement/usersApi";
 import ConfirmDialog from "../../reusable-components/confirm-dialog/ConfirmDialog";
 import "./AreasModal.scss";
@@ -31,11 +30,7 @@ import "./AreasModal.scss";
 const schema = yup.object({
   code: yup.string().required("Code is required."),
   name: yup.string().required("Area name is required."),
-  unit_ids: yup
-    .array()
-    .of(yup.number())
-    .min(1, "At least one unit is required.")
-    .required("At least one unit is required."),
+  unit_ids: yup.array().of(yup.number()).default([]),
   area_head_id: yup.number().nullable().typeError("Invalid area head."),
 });
 
@@ -80,11 +75,6 @@ const getUserOptionLabel = (user) => {
     user.suffix,
   ].filter(Boolean);
   return parts.join(" ") || user.username || `User #${user.id}`;
-};
-
-const getUnitOptionLabel = (unit) => {
-  if (!unit) return "";
-  return unit.name ?? `Unit #${unit.id}`;
 };
 
 const getAreaUnits = (area) => {
@@ -189,119 +179,6 @@ const SearchSelect = ({
   );
 };
 
-const MultiSearchSelect = ({
-  value = [],
-  onChange,
-  options,
-  getOptionLabel,
-  loading,
-  error,
-  placeholder,
-}) => {
-  const [open, setOpen] = useState(false);
-  const [query, setQuery] = useState("");
-  const wrapRef = useRef(null);
-
-  const selectedOptions = useMemo(
-    () => options.filter((o) => value.includes(o.id)),
-    [options, value],
-  );
-
-  const filteredOptions = useMemo(() => {
-    if (!query.trim()) return options;
-    const q = query.toLowerCase();
-    return options.filter((o) => getOptionLabel(o).toLowerCase().includes(q));
-  }, [options, query, getOptionLabel]);
-
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (wrapRef.current && !wrapRef.current.contains(e.target)) {
-        setOpen(false);
-        setQuery("");
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  const handleToggle = (option) => {
-    if (value.includes(option.id)) {
-      onChange(value.filter((id) => id !== option.id));
-    } else {
-      onChange([...value, option.id]);
-    }
-  };
-
-  const selectedLabel = selectedOptions.map(getOptionLabel).join(", ");
-
-  return (
-    <div
-      ref={wrapRef}
-      className={`am__ac${error ? " am__ac--error" : ""}${open ? " am__ac--open" : ""}`}>
-      <div className="am__ac-box" onClick={() => setOpen((prev) => !prev)}>
-        {open ? (
-          <div className="am__ac-search-wrap">
-            <SearchIcon style={{ fontSize: "1rem" }} />
-            <input
-              className="am__ac-input"
-              autoFocus
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onClick={(e) => e.stopPropagation()}
-              placeholder={
-                selectedOptions.length
-                  ? `${selectedOptions.length} selected`
-                  : "Search..."
-              }
-            />
-          </div>
-        ) : selectedOptions.length ? (
-          <span
-            className="am__ac-value"
-            title={selectedLabel}
-            style={{
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-            }}>
-            {selectedLabel}
-          </span>
-        ) : (
-          <span className="am__ac-placeholder">
-            {loading ? "Loading..." : placeholder}
-          </span>
-        )}
-        <span className="am__ac-arrow">
-          {open ? <KeyboardArrowUpIcon /> : <KeyboardArrowDownIcon />}
-        </span>
-      </div>
-
-      {open && (
-        <div className="am__ac-dropdown">
-          <div className="am__ac-options">
-            {loading ? (
-              <p className="am__ac-empty">Loading...</p>
-            ) : filteredOptions.length === 0 ? (
-              <p className="am__ac-empty">No results found.</p>
-            ) : (
-              filteredOptions.map((option) => (
-                <div
-                  key={option.id}
-                  className={`am__ac-option${
-                    value.includes(option.id) ? " am__ac-option--selected" : ""
-                  }`}
-                  onClick={() => handleToggle(option)}>
-                  {getOptionLabel(option)}
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
-
 const AreasModal = ({ open, onClose, selectedId = null }) => {
   const [mode, setMode] = useState("add");
   const [selectedRow, setSelectedRow] = useState(null);
@@ -316,12 +193,6 @@ const AreasModal = ({ open, onClose, selectedId = null }) => {
       skip: !selectedId || !open,
     },
   );
-
-  const { data: unitsData, isFetching: unitsLoading } = useGetUnitsQuery(
-    { status: "active", page: 1, per_page: 1000 },
-    { skip: !open },
-  );
-  const unitOptions = unitsData?.data?.data ?? [];
 
   const { data: usersData, isFetching: usersLoading } = useGetUsersQuery(
     { status: "active", page: 1, per_page: 1000 },
@@ -373,7 +244,12 @@ const AreasModal = ({ open, onClose, selectedId = null }) => {
   }, [open, selectedId, areaData, reset]);
 
   const onValidSubmit = (form) => {
-    setPendingFormData(form);
+    setPendingFormData({
+      code: form.code,
+      name: form.name,
+      unit_ids: mode === "edit" ? (form.unit_ids ?? []) : [],
+      area_head_id: form.area_head_id ?? null,
+    });
     setConfirmOpen(true);
   };
 
@@ -423,9 +299,6 @@ const AreasModal = ({ open, onClose, selectedId = null }) => {
 
   const isView = mode === "view";
 
-  const viewUnitsLabel =
-    getAreaUnits(selectedRow).map(getUnitOptionLabel).join(", ") || "-";
-
   return (
     <Dialog
       open={open}
@@ -471,18 +344,6 @@ const AreasModal = ({ open, onClose, selectedId = null }) => {
                   <input
                     type="text"
                     value={selectedRow?.name ?? ""}
-                    disabled
-                    readOnly
-                  />
-                </div>
-              </div>
-              <div className="am__field" style={{ marginTop: 12 }}>
-                <div className="am__input-wrap am__input-wrap--disabled">
-                  <label className="am__label">Units</label>
-                  <input
-                    type="text"
-                    value={viewUnitsLabel}
-                    title={viewUnitsLabel}
                     disabled
                     readOnly
                   />
@@ -539,34 +400,6 @@ const AreasModal = ({ open, onClose, selectedId = null }) => {
                   <p className="am__error">
                     <ReportProblemIcon />
                     {errors.name?.message}
-                  </p>
-                )}
-              </div>
-
-              <div className="am__field" style={{ marginTop: 12 }}>
-                <label className="am__label am__label--static">
-                  Units
-                  <span className="am__required">*</span>
-                </label>
-                <Controller
-                  name="unit_ids"
-                  control={control}
-                  render={({ field }) => (
-                    <MultiSearchSelect
-                      value={field.value ?? []}
-                      onChange={field.onChange}
-                      options={unitOptions}
-                      getOptionLabel={getUnitOptionLabel}
-                      loading={unitsLoading}
-                      error={!!errors.unit_ids}
-                      placeholder="Select units"
-                    />
-                  )}
-                />
-                {errors.unit_ids && (
-                  <p className="am__error">
-                    <ReportProblemIcon />
-                    {errors.unit_ids?.message}
                   </p>
                 )}
               </div>

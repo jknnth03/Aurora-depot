@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useEffect, useMemo, useState } from "react";
+import { useForm, Controller } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import Dialog from "@mui/material/Dialog";
 import DialogContent from "@mui/material/DialogContent";
 import IconButton from "@mui/material/IconButton";
+import Autocomplete from "@mui/material/Autocomplete";
 import CloseIcon from "@mui/icons-material/Close";
 import AccountTreeIcon from "@mui/icons-material/AccountTree";
 import EditIcon from "@mui/icons-material/Edit";
@@ -20,19 +21,62 @@ import {
   useCreateUnitMutation,
   useUpdateUnitMutation,
 } from "../../features/api/units/unitsApi";
+import { useGetUsersQuery } from "../../features/api/usersmanagement/usersApi";
+import { useGetAreasQuery } from "../../features/api/areas/areasApi";
 import ConfirmDialog from "../../reusable-components/confirm-dialog/ConfirmDialog";
 import "./UnitsModal.scss";
 
 const schema = yup.object({
+  code: yup.string().trim().required("Unit code is required."),
   name: yup.string().trim().required("Unit name is required."),
+  unit_head_id: yup
+    .number()
+    .nullable()
+    .transform((value, original) =>
+      original === "" || original === null || original === undefined
+        ? null
+        : value,
+    ),
+  area_ids: yup.array().of(yup.number()).default([]),
 });
+
+const emptyValues = {
+  code: "",
+  name: "",
+  unit_head_id: null,
+  area_ids: [],
+};
+
+const normalizeList = (response) => {
+  if (!response) return [];
+  if (Array.isArray(response)) return response;
+  if (Array.isArray(response.data?.data)) return response.data.data;
+  if (Array.isArray(response.data)) return response.data;
+  if (Array.isArray(response.result?.data)) return response.result.data;
+  if (Array.isArray(response.result)) return response.result;
+  return [];
+};
+
+const getUserLabel = (user) =>
+  user?.full_name || user?.name || user?.username || "";
+
+const getAreaLabel = (area) => area?.name || area?.code || "";
+
+const autocompleteSlotProps = {
+  paper: { className: "um__popup-paper" },
+  popper: { placement: "bottom-start" },
+  clearIndicator: { className: "um__indicator", size: "small" },
+  popupIndicator: { className: "um__indicator", size: "small" },
+};
 
 const SkeletonLoader = () => (
   <div className="um__skeleton-wrap">
-    <div className="um__skeleton-group">
-      <span className="ut__skeleton um__skeleton-label" />
-      <span className="ut__skeleton um__skeleton-field" />
-    </div>
+    {[0, 1, 2, 3].map((item) => (
+      <div className="um__skeleton-group" key={item}>
+        <span className="ut__skeleton um__skeleton-label" />
+        <span className="ut__skeleton um__skeleton-field" />
+      </div>
+    ))}
     <div className="um__skeleton-footer">
       <span className="ut__skeleton um__skeleton-btn" />
     </div>
@@ -54,27 +98,59 @@ const UnitsModal = ({ open, onClose, selectedId = null }) => {
     },
   );
 
+  const { data: usersData, isFetching: usersLoading } = useGetUsersQuery(
+    { status: "active", page: 1, per_page: 100 },
+    { skip: !open },
+  );
+
+  const { data: areasData, isFetching: areasLoading } = useGetAreasQuery(
+    { status: "active", page: 1, per_page: 100 },
+    { skip: !open },
+  );
+
+  const userOptions = useMemo(() => normalizeList(usersData), [usersData]);
+  const areaOptions = useMemo(() => normalizeList(areasData), [areasData]);
+
   const {
     register,
     handleSubmit,
     reset,
+    control,
+    watch,
     formState: { errors },
   } = useForm({
     resolver: yupResolver(schema),
-    defaultValues: {
-      name: "",
-    },
+    defaultValues: emptyValues,
   });
 
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pendingFormData, setPendingFormData] = useState(null);
+
+  const watchedHeadId = watch("unit_head_id");
+  const watchedAreaIds = watch("area_ids");
+
+  const getHeadValue = (id) => {
+    if (id === null || id === undefined) return null;
+    const found = userOptions.find((user) => user.id === id);
+    if (found) return found;
+    if (selectedRow?.unit_head?.id === id) return selectedRow.unit_head;
+    return { id, full_name: `User #${id}` };
+  };
+
+  const getAreaValues = (ids) =>
+    (ids ?? []).map((id) => {
+      const found =
+        areaOptions.find((area) => area.id === id) ||
+        (selectedRow?.areas ?? []).find((area) => area.id === id);
+      return found || { id, name: `Area #${id}` };
+    });
 
   useEffect(() => {
     if (!open) return;
     if (!selectedId) {
       setMode("add");
       setSelectedRow(null);
-      reset({ name: "" });
+      reset(emptyValues);
     } else {
       setMode("view");
     }
@@ -85,13 +161,22 @@ const UnitsModal = ({ open, onClose, selectedId = null }) => {
       const data = unitData?.data ?? null;
       setSelectedRow(data);
       reset({
+        code: data?.code ?? "",
         name: data?.name ?? "",
+        unit_head_id: data?.unit_head_id ?? data?.unit_head?.id ?? null,
+        area_ids:
+          data?.area_ids ?? (data?.areas ?? []).map((area) => area.id) ?? [],
       });
     }
   }, [open, selectedId, unitData, reset]);
 
   const onValidSubmit = (form) => {
-    setPendingFormData(form);
+    setPendingFormData({
+      code: form.code,
+      name: form.name,
+      unit_head_id: form.unit_head_id ?? null,
+      area_ids: form.area_ids ?? [],
+    });
     setConfirmOpen(true);
   };
 
@@ -140,6 +225,8 @@ const UnitsModal = ({ open, onClose, selectedId = null }) => {
   };
 
   const isView = mode === "view";
+  const viewHead = getHeadValue(watchedHeadId);
+  const viewAreas = getAreaValues(watchedAreaIds);
 
   return (
     <Dialog
@@ -171,6 +258,17 @@ const UnitsModal = ({ open, onClose, selectedId = null }) => {
               <p className="um__group-label">Unit Details</p>
               <div className="um__field">
                 <div className="um__input-wrap um__input-wrap--disabled">
+                  <label className="um__label">Unit Code</label>
+                  <input
+                    type="text"
+                    value={selectedRow?.code ?? ""}
+                    disabled
+                    readOnly
+                  />
+                </div>
+              </div>
+              <div className="um__field">
+                <div className="um__input-wrap um__input-wrap--disabled">
                   <label className="um__label">Unit Name</label>
                   <input
                     type="text"
@@ -178,6 +276,31 @@ const UnitsModal = ({ open, onClose, selectedId = null }) => {
                     disabled
                     readOnly
                   />
+                </div>
+              </div>
+              <div className="um__field">
+                <div className="um__input-wrap um__input-wrap--disabled">
+                  <label className="um__label">Unit Head</label>
+                  <input
+                    type="text"
+                    value={viewHead ? getUserLabel(viewHead) : ""}
+                    disabled
+                    readOnly
+                  />
+                </div>
+              </div>
+              <div className="um__field">
+                <div className="um__input-wrap um__input-wrap--multi um__input-wrap--disabled">
+                  <label className="um__label">Areas</label>
+                  {viewAreas.length > 0 ? (
+                    viewAreas.map((area) => (
+                      <span className="um__chip-static" key={area.id}>
+                        {getAreaLabel(area)}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="um__empty">No areas assigned</span>
+                  )}
                 </div>
               </div>
             </div>
@@ -190,6 +313,24 @@ const UnitsModal = ({ open, onClose, selectedId = null }) => {
           <form onSubmit={handleSubmit(onValidSubmit)} noValidate>
             <div className="um__group">
               <p className="um__group-label">Unit Details</p>
+
+              <div className="um__field">
+                <div
+                  className={`um__input-wrap${errors.code ? " um__input-wrap--error" : ""}`}>
+                  <label className="um__label">
+                    Unit Code
+                    <span className="um__required">*</span>
+                  </label>
+                  <input type="text" {...register("code")} autoComplete="off" />
+                </div>
+                {errors.code && (
+                  <p className="um__error">
+                    <ReportProblemIcon />
+                    {errors.code?.message}
+                  </p>
+                )}
+              </div>
+
               <div className="um__field">
                 <div
                   className={`um__input-wrap${errors.name ? " um__input-wrap--error" : ""}`}>
@@ -203,6 +344,93 @@ const UnitsModal = ({ open, onClose, selectedId = null }) => {
                   <p className="um__error">
                     <ReportProblemIcon />
                     {errors.name?.message}
+                  </p>
+                )}
+              </div>
+
+              <div className="um__field">
+                <Controller
+                  name="unit_head_id"
+                  control={control}
+                  render={({ field }) => (
+                    <Autocomplete
+                      options={userOptions}
+                      loading={usersLoading}
+                      value={getHeadValue(field.value)}
+                      onChange={(event, item) =>
+                        field.onChange(item?.id ?? null)
+                      }
+                      getOptionLabel={getUserLabel}
+                      isOptionEqualToValue={(option, value) =>
+                        option?.id === value?.id
+                      }
+                      noOptionsText={
+                        usersLoading ? "Loading users..." : "No users found"
+                      }
+                      slotProps={autocompleteSlotProps}
+                      renderInput={(params) => (
+                        <div
+                          ref={params.slotProps?.input?.ref}
+                          className={`um__input-wrap um__input-wrap--select${errors.unit_head_id ? " um__input-wrap--error" : ""}`}>
+                          <label className="um__label">Unit Head</label>
+                          <input type="text" {...params.slotProps?.htmlInput} />
+                          {params.slotProps?.input?.endAdornment}
+                        </div>
+                      )}
+                    />
+                  )}
+                />
+                {errors.unit_head_id && (
+                  <p className="um__error">
+                    <ReportProblemIcon />
+                    {errors.unit_head_id?.message}
+                  </p>
+                )}
+              </div>
+
+              <div className="um__field">
+                <Controller
+                  name="area_ids"
+                  control={control}
+                  render={({ field }) => (
+                    <Autocomplete
+                      multiple
+                      disableCloseOnSelect
+                      size="small"
+                      options={areaOptions}
+                      loading={areasLoading}
+                      value={getAreaValues(field.value)}
+                      onChange={(event, items) =>
+                        field.onChange(items.map((item) => item.id))
+                      }
+                      getOptionLabel={getAreaLabel}
+                      isOptionEqualToValue={(option, value) =>
+                        option?.id === value?.id
+                      }
+                      noOptionsText={
+                        areasLoading ? "Loading areas..." : "No areas found"
+                      }
+                      slotProps={{
+                        ...autocompleteSlotProps,
+                        chip: { className: "um__chip", size: "small" },
+                      }}
+                      renderInput={(params) => (
+                        <div
+                          ref={params.slotProps?.input?.ref}
+                          className={`um__input-wrap um__input-wrap--select um__input-wrap--multi${errors.area_ids ? " um__input-wrap--error" : ""}`}>
+                          <label className="um__label">Areas</label>
+                          {params.slotProps?.input?.startAdornment}
+                          <input type="text" {...params.slotProps?.htmlInput} />
+                          {params.slotProps?.input?.endAdornment}
+                        </div>
+                      )}
+                    />
+                  )}
+                />
+                {errors.area_ids && (
+                  <p className="um__error">
+                    <ReportProblemIcon />
+                    {errors.area_ids?.message}
                   </p>
                 )}
               </div>

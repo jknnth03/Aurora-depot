@@ -206,6 +206,10 @@ export function initChipColors() {
   });
 }
 
+export function dispatchChipChange() {
+  window.dispatchEvent(new CustomEvent("chipColorsChanged"));
+}
+
 if (typeof window !== "undefined") {
   const _applyStoredColors = () => {
     initChipColors();
@@ -215,10 +219,25 @@ if (typeof window !== "undefined") {
   } else {
     _applyStoredColors();
   }
-}
 
-export function dispatchChipChange() {
-  window.dispatchEvent(new CustomEvent("chipColorsChanged"));
+  // Re-apply chip colors (and notify chip components) whenever the theme
+  // changes, so default colors follow light/dark instead of staying stuck
+  // on whatever theme was active when initChipColors last ran.
+  if (typeof MutationObserver !== "undefined") {
+    const _themeObserver = new MutationObserver((mutations) => {
+      for (const m of mutations) {
+        if (m.attributeName === "data-theme") {
+          initChipColors();
+          dispatchChipChange();
+          break;
+        }
+      }
+    });
+    _themeObserver.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["data-theme"],
+    });
+  }
 }
 
 export function getChipName(id) {

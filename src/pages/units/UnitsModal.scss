@@ -102,6 +102,10 @@
     position: relative;
   }
 
+  &__field + &__field {
+    margin-top: 18px;
+  }
+
   &__label {
     position: absolute;
     top: -9px;
@@ -164,6 +168,37 @@
       }
     }
 
+    &--select {
+      padding-right: 60px;
+
+      .MuiAutocomplete-endAdornment {
+        position: absolute;
+        right: 8px;
+        top: 50%;
+        transform: translateY(-50%);
+        display: flex;
+        align-items: center;
+        gap: 2px;
+      }
+    }
+
+    &--multi {
+      flex-wrap: wrap;
+      gap: 4px;
+      min-height: 44px;
+      padding-top: 6px;
+      padding-bottom: 6px;
+
+      .MuiAutocomplete-endAdornment {
+        top: 22px;
+      }
+
+      input {
+        min-width: 80px;
+        padding: 5px 0;
+      }
+    }
+
     &--disabled {
       background: rgba($primary-main, 0.03) !important;
       border-color: $border-color !important;
@@ -209,6 +244,118 @@
       [data-theme="dark"] & {
         color: rgba(255, 255, 255, 0.85);
       }
+    }
+  }
+
+  &__indicator {
+    width: 24px !important;
+    height: 24px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    color: $text-muted !important;
+    transition:
+      color 0.15s,
+      background 0.15s !important;
+
+    svg {
+      font-size: 1.1rem !important;
+    }
+
+    &:hover {
+      color: $primary-main !important;
+      background: rgba($primary-main, 0.08) !important;
+    }
+  }
+
+  &__chip {
+    height: 22px !important;
+    font-size: 0.7rem !important;
+    font-family: "Poppins", sans-serif !important;
+    background: rgba($primary-main, 0.1) !important;
+    color: $primary-main !important;
+    margin: 0 !important;
+
+    .MuiChip-deleteIcon {
+      color: $primary-main !important;
+      font-size: 0.9rem !important;
+      margin-right: 4px !important;
+    }
+  }
+
+  &__chip-static {
+    display: inline-flex;
+    align-items: center;
+    height: 22px;
+    padding: 0 10px;
+    border-radius: 11px;
+    font-size: 0.7rem;
+    font-weight: 400;
+    font-family: "Poppins", sans-serif;
+    background: rgba($primary-main, 0.1);
+    color: $primary-main;
+  }
+
+  &__empty {
+    padding: 5px 0;
+    font-size: 0.82rem;
+    font-family: "Poppins", sans-serif;
+    color: $text-muted;
+  }
+
+  &__popup-paper {
+    margin-top: 4px !important;
+    border-radius: 8px !important;
+    border: 1px solid $border-color;
+    background: #fff !important;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12) !important;
+    font-family: "Poppins", sans-serif !important;
+
+    [data-theme="dark"] & {
+      background: $bg-main !important;
+      border-color: rgba(255, 255, 255, 0.08);
+    }
+
+    .MuiAutocomplete-listbox {
+      padding: 4px !important;
+      max-height: 220px !important;
+    }
+
+    .MuiAutocomplete-option {
+      min-height: 36px !important;
+      padding: 6px 10px !important;
+      border-radius: 6px;
+      font-family: "Poppins", sans-serif !important;
+      font-size: 0.82rem !important;
+      font-weight: 400;
+      color: $text-primary;
+
+      [data-theme="dark"] & {
+        color: rgba(255, 255, 255, 0.85);
+      }
+
+      &.Mui-focused,
+      &:hover {
+        background: rgba($primary-main, 0.08) !important;
+      }
+
+      &[aria-selected="true"] {
+        background: rgba($primary-main, 0.14) !important;
+        color: $primary-main;
+        font-weight: 500;
+
+        &.Mui-focused,
+        &:hover {
+          background: rgba($primary-main, 0.2) !important;
+        }
+      }
+    }
+
+    .MuiAutocomplete-noOptions,
+    .MuiAutocomplete-loading {
+      padding: 10px 12px !important;
+      font-family: "Poppins", sans-serif !important;
+      font-size: 0.8rem !important;
+      color: $text-muted !important;
     }
   }
 

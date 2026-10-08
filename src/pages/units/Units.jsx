@@ -3,7 +3,9 @@ import { useRememberQueryParams } from "../../hooks/useRememberQueryParams";
 import useDebounce from "../../hooks/useDebounce";
 import AccountTreeIcon from "@mui/icons-material/AccountTree";
 import AddIcon from "@mui/icons-material/Add";
+import RemoveRedEyeIcon from "@mui/icons-material/RemoveRedEye";
 import Chip from "@mui/material/Chip";
+import IconButton from "@mui/material/IconButton";
 import PageContainer from "../../reusable-components/page-container/PageContainer";
 import UniversalTable from "../../reusable-components/universal-table/UniversalTable";
 import TablePagination from "../../reusable-components/table-pagination/TablePagination";
@@ -19,6 +21,7 @@ import {
 import ConfirmDialog from "../../reusable-components/confirm-dialog/ConfirmDialog";
 import RowMenu from "../../reusable-components/row-menu/RowMenu";
 import UnitsModal from "./UnitsModal";
+import UnitAreasDialog from "./UnitAreasDialog";
 import {
   getChipBg,
   getChipTextColor,
@@ -46,6 +49,9 @@ const Units = () => {
   const [toArchive, setToArchive] = useState(null);
   const [restoreConfirmOpen, setRestoreConfirmOpen] = useState(false);
   const [toRestore, setToRestore] = useState(null);
+  const [areasDialogOpen, setAreasDialogOpen] = useState(false);
+  const [selectedAreas, setSelectedAreas] = useState([]);
+  const [selectedUnitName, setSelectedUnitName] = useState("");
 
   const currentStatus = showArchived ? "inactive" : "active";
 
@@ -125,6 +131,29 @@ const Units = () => {
     }
   };
 
+  const handleViewAreas = (e, row) => {
+    e.stopPropagation();
+    setSelectedAreas(row?.areas ?? []);
+    setSelectedUnitName(row?.name ?? "");
+    setAreasDialogOpen(true);
+  };
+  const handleCloseAreas = () => {
+    setAreasDialogOpen(false);
+    setSelectedAreas([]);
+    setSelectedUnitName("");
+  };
+
+  const getUnitHeadName = (unitHead) => {
+    if (!unitHead) return "-";
+    const parts = [
+      unitHead.first_name,
+      unitHead.middle_name,
+      unitHead.last_name,
+      unitHead.suffix,
+    ].filter(Boolean);
+    return parts.length ? parts.join(" ") : "-";
+  };
+
   const renderStatusChip = (isArchivedRow) => {
     const chipId = isArchivedRow ? "chip-inactive" : "chip-active";
     return (
@@ -141,6 +170,28 @@ const Units = () => {
 
   const columns = [
     { key: "name", label: "Name", sortable: true },
+    {
+      key: "unit_head",
+      label: "Unit Head",
+      sortable: false,
+      render: (val) => getUnitHeadName(val),
+    },
+    {
+      key: "areas",
+      label: "Areas",
+      sortable: false,
+      render: (val, row) =>
+        val?.length ? (
+          <IconButton
+            size="small"
+            className="uad__trigger"
+            onClick={(e) => handleViewAreas(e, row)}>
+            <RemoveRedEyeIcon fontSize="small" />
+          </IconButton>
+        ) : (
+          "-"
+        ),
+    },
     {
       key: "is_archived",
       label: "Status",
@@ -213,6 +264,13 @@ const Units = () => {
         open={modalOpen}
         onClose={handleClose}
         selectedId={selectedId}
+      />
+
+      <UnitAreasDialog
+        open={areasDialogOpen}
+        onClose={handleCloseAreas}
+        areas={selectedAreas}
+        unitName={selectedUnitName}
       />
 
       <ConfirmDialog
