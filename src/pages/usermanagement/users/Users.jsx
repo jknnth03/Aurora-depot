@@ -2,15 +2,10 @@ import { useState } from "react";
 import { useRememberQueryParams } from "../../../hooks/useRememberQueryParams";
 import useDebounce from "../../../hooks/useDebounce";
 import PersonAddIcon from "@mui/icons-material/PersonAdd";
-import AddIcon from "@mui/icons-material/Add";
 import PageContainer from "../../../reusable-components/page-container/PageContainer";
 import UniversalTable from "../../../reusable-components/universal-table/UniversalTable";
 import TablePagination from "../../../reusable-components/table-pagination/TablePagination";
-import UniversalButton from "../../../reusable-components/universal-buttons/UniversalButtons";
-import {
-  TableSearchField,
-  // ArchivedButton,
-} from "../../../reusable-components/table-search/TableSearch";
+import { TableSearchField } from "../../../reusable-components/table-search/TableSearch";
 import {
   useGetUsersQuery,
   useResetPasswordMutation,
@@ -43,19 +38,11 @@ const Users = () => {
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [sortBy, setSortBy] = useState(null);
   const [sortOrder, setSortOrder] = useState("asc");
-  const [
-    queryParams,
-    setQueryParams /* , , resetAfterArchive, resetAfterRestore */,
-  ] = useRememberQueryParams();
-  // const showArchived = queryParams.status === "inactive";
+  const [queryParams, setQueryParams] = useRememberQueryParams();
   const search = queryParams.search ?? "";
   const debouncedSearch = useDebounce(search, 500);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedId, setSelectedId] = useState(null);
-  // const [confirmOpen, setConfirmOpen] = useState(false);
-  // const [toArchive, setToArchive] = useState(null);
-  // const [restoreConfirmOpen, setRestoreConfirmOpen] = useState(false);
-  // const [toRestore, setToRestore] = useState(null);
   const [resetPasswordConfirmOpen, setResetPasswordConfirmOpen] =
     useState(false);
   const [toResetPassword, setToResetPassword] = useState(null);
@@ -92,20 +79,6 @@ const Users = () => {
     setPage(1);
   };
 
-  // const handleRestoreClick = (row) => {
-  //   setToRestore(row);
-  //   setRestoreConfirmOpen(true);
-  // };
-  // const handleConfirmRestore = () => {
-  //   setRestoreConfirmOpen(false);
-  //   setToRestore(null);
-  //   resetAfterRestore();
-  // };
-
-  const handleAdd = () => {
-    setSelectedId(null);
-    setModalOpen(true);
-  };
   const handleRowClick = (row) => {
     const id = getUserId(row);
     if (!id) {
@@ -121,15 +94,6 @@ const Users = () => {
     setModalOpen(false);
     setSelectedId(null);
   };
-  // const handleArchiveClick = (row) => {
-  //   setToArchive(row);
-  //   setConfirmOpen(true);
-  // };
-  // const handleConfirmArchive = () => {
-  //   setConfirmOpen(false);
-  //   setToArchive(null);
-  //   resetAfterArchive();
-  // };
 
   const handleResetPasswordClick = (row) => {
     setToResetPassword(row);
@@ -165,32 +129,12 @@ const Users = () => {
         title="Users"
         titleIcon={<PersonAddIcon />}
         isEmpty={!isFetching && (tableData.length === 0 || is404)}
-        titleAction={
-          <UniversalButton
-            label="Add User"
-            tooltip="Click this button to add a new user"
-            icon={<AddIcon />}
-            onClick={handleAdd}
-          />
-        }
         actions={
-          <>
-            {/* <ArchivedButton
-              active={showArchived}
-              onClick={() => {
-                setQueryParams(
-                  { status: showArchived ? "active" : "inactive" },
-                  { retain: true },
-                );
-                setPage(1);
-              }}
-            /> */}
-            <TableSearchField
-              value={search}
-              onChange={handleSearch}
-              placeholder="Search users..."
-            />
-          </>
+          <TableSearchField
+            value={search}
+            onChange={handleSearch}
+            placeholder="Search users..."
+          />
         }
         pagination={
           <TablePagination
@@ -212,9 +156,6 @@ const Users = () => {
           actions={(row) => (
             <RowMenu
               hideArchive
-              // isArchived={showArchived}
-              // onArchive={() => handleArchiveClick(row)}
-              // onRestore={() => handleRestoreClick(row)}
               onResetPassword={() => handleResetPasswordClick(row)}
             />
           )}
@@ -227,28 +168,6 @@ const Users = () => {
         selectedId={selectedId}
         onPasswordChanged={refetch}
       />
-
-      {/* <ConfirmDialog
-        open={confirmOpen}
-        onClose={() => {
-          setConfirmOpen(false);
-          setToArchive(null);
-        }}
-        onConfirm={handleConfirmArchive}
-        title="Archive User"
-        message={`Are you sure you want to archive "${toArchive?.first_name} ${toArchive?.last_name}"? This action will set the user as inactive.`}
-      />
-
-      <ConfirmDialog
-        open={restoreConfirmOpen}
-        onClose={() => {
-          setRestoreConfirmOpen(false);
-          setToRestore(null);
-        }}
-        onConfirm={handleConfirmRestore}
-        title="Restore User"
-        message={`Are you sure you want to restore "${toRestore?.first_name} ${toRestore?.last_name}"? This will set it back to active.`}
-      /> */}
 
       <ConfirmDialog
         open={resetPasswordConfirmOpen}

@@ -156,13 +156,13 @@
     align-items: center;
     border: 1.5px solid $border-color;
     border-radius: 8px;
-    background: #fff;
+    background: $bg-main;
     padding: 0 12px;
     transition: border-color 0.2s;
     position: relative;
 
     .ctm__label {
-      background: #fff;
+      background: $bg-main;
     }
 
     &:focus-within {
@@ -327,7 +327,7 @@
     position: relative;
     border: 1.5px solid $border-color;
     border-radius: 8px;
-    background: #fff;
+    background: $bg-main;
     transition: border-color 0.2s;
 
     [data-theme="dark"] & {
@@ -467,7 +467,7 @@
     margin-top: 4px;
     border: 1.5px solid $border-color;
     border-radius: 8px;
-    background: #fff;
+    background: $bg-main;
     overflow: hidden;
 
     [data-theme="dark"] & {

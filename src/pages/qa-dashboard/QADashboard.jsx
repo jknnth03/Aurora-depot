@@ -84,10 +84,10 @@ const QADashboard = () => {
     tableData.find((row) => row.id === selectedChecklistId) ?? null;
 
   useEffect(() => {
-    if (selectedChecklistId && !selectedChecklist) {
+    if (selectedChecklistId && !selectedChecklist && !isFetching) {
       setSelectedChecklistId(null);
     }
-  }, [selectedChecklistId, selectedChecklist]);
+  }, [selectedChecklistId, selectedChecklist, isFetching]);
 
   const handleSort = (key, order) => {
     setSortBy(key);
@@ -194,6 +194,7 @@ const QADashboard = () => {
         checklistData={selectedChecklist}
         month={month}
         year={year}
+        isLoading={isFetching}
         onRefetch={refetch}
         onClose={() => setSelectedChecklistId(null)}
       />

@@ -127,7 +127,7 @@
     position: absolute;
     top: -9px;
     left: 12px;
-    background: #fff;
+    background: $bg-main;
     padding: 0 4px;
     font-size: 0.68rem;
     font-weight: 400;
@@ -171,7 +171,7 @@
     align-items: center;
     border: 1.5px solid $border-color;
     border-radius: 8px;
-    background: #fff;
+    background: $bg-main;
     padding: 0 12px;
     transition: border-color 0.2s;
     position: relative;
@@ -313,7 +313,7 @@
     border-radius: 8px;
     padding: 12px;
     margin-bottom: 12px;
-    background: #fff;
+    background: $bg-main;
 
     [data-theme="dark"] & {
       background: rgba(255, 255, 255, 0.03);
@@ -442,7 +442,7 @@
     position: relative;
     border: 1.5px solid $border-color;
     border-radius: 8px;
-    background: #fff;
+    background: $bg-main;
     transition: border-color 0.2s;
 
     [data-theme="dark"] & {
@@ -560,7 +560,7 @@
     border: 1.5px solid $border-color;
     border-top: none;
     border-radius: 0 0 8px 8px;
-    background: #fff;
+    background: $bg-main;
     overflow: hidden;
 
     [data-theme="dark"] & {

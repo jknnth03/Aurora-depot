@@ -11,6 +11,17 @@ import AuroraIcon from "../../assets/aurora.svg";
 import AccountMenu from "../accountmenu/AccountMenu.jsx";
 import "./Sidebar.scss";
 
+console.log("[SIDEBAR] file loaded: v3");
+
+const KEY_ALIASES = {
+  "score-grade": "score-grading",
+};
+
+const normalizeKey = (key) => {
+  const base = String(key).split(".")[0].replace(/_/g, "-");
+  return KEY_ALIASES[base] ?? base;
+};
+
 const getStoredUser = () => {
   try {
     return JSON.parse(localStorage.getItem("user")) || {};
@@ -26,17 +37,24 @@ const getEffectiveUser = (reduxUser) => {
   return getStoredUser();
 };
 
+const toPermissionNames = (list) =>
+  list.map((p) => (typeof p === "string" ? p : p?.name)).filter(Boolean);
+
 const extractUserPermissions = (user) => {
+  if (Array.isArray(user?.role?.access_permission)) {
+    return toPermissionNames(user.role.access_permission);
+  }
+
+  if (Array.isArray(user?.access_permission)) {
+    return toPermissionNames(user.access_permission);
+  }
+
   if (Array.isArray(user?.access_permissions)) {
-    return user.access_permissions.map((p) =>
-      typeof p === "string" ? p : p?.name,
-    );
+    return toPermissionNames(user.access_permissions);
   }
 
   if (Array.isArray(user?.role?.permissions)) {
-    return user.role.permissions.map((p) =>
-      typeof p === "string" ? p : p?.name,
-    );
+    return toPermissionNames(user.role.permissions);
   }
 
   return [];
@@ -44,7 +62,10 @@ const extractUserPermissions = (user) => {
 
 const hasPermission = (userPermissions, permissionKey) => {
   if (!permissionKey) return true;
-  return userPermissions.includes(permissionKey);
+  const moduleKey = normalizeKey(permissionKey);
+  return userPermissions.some(
+    (p) => p === permissionKey || normalizeKey(p) === moduleKey,
+  );
 };
 
 const filterModulesByPermission = (modules, userPermissions) => {
@@ -316,6 +337,16 @@ const Sidebar = ({
     .toUpperCase();
 
   const navItems = getFilteredNavItems(rawUser);
+
+  console.log(
+    "[SIDEBAR] USERS key:",
+    MODULES.USERMANAGEMENT.children.USERS.permissionKey,
+  );
+  console.log("[SIDEBAR] extracted perms:", extractUserPermissions(rawUser));
+  console.log(
+    "[SIDEBAR] navItems:",
+    navItems.map((n) => n.name),
+  );
 
   useEffect(() => {
     if (!open) return;

@@ -24,6 +24,8 @@ import { useGetPermissionsQuery } from "../../../features/api/usersmanagement/pe
 import ConfirmDialog from "../../../reusable-components/confirm-dialog/ConfirmDialog";
 import "./RolesModal.scss";
 
+const PERMISSIONS_KEY = "permissions";
+
 const schema = yup.object({
   name: yup.string().required("Role name is required."),
   description: yup.string().required("Description is required."),
@@ -34,21 +36,44 @@ const schema = yup.object({
 });
 
 const normalizePermissions = (permissions) =>
-  (permissions ?? []).map((p) => (typeof p === "string" ? p : p?.name));
+  (permissions ?? [])
+    .map((p) => (typeof p === "string" ? p : p?.name))
+    .filter(Boolean);
+
+const getRolePermissions = (role) =>
+  normalizePermissions(role?.access_permission ?? role?.permissions);
+
+const buildPayload = (form) => ({
+  name: form.name,
+  description: form.description,
+  [PERMISSIONS_KEY]: form.permissions,
+});
 
 const formatLabel = (str) =>
-  str.replace(/[-_]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+  (str ?? "").replace(/[-_]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+
+const MODULES_GROUP_LABEL = "Modules";
 
 const buildPermissionGroups = (permissions) => {
   const map = {};
   (permissions ?? []).forEach((perm) => {
     const name = typeof perm === "string" ? perm : perm?.name;
-    if (!name || !name.includes(".")) return;
-    const [moduleKey, ...actionParts] = name.split(".");
-    const moduleLabel = formatLabel(moduleKey);
-    const actionLabel = formatLabel(actionParts.join(" "));
-    if (!map[moduleLabel]) map[moduleLabel] = [];
-    map[moduleLabel].push({ value: name, label: actionLabel });
+    if (!name) return;
+
+    if (name.includes(".")) {
+      const [moduleKey, ...actionParts] = name.split(".");
+      const moduleLabel = formatLabel(moduleKey);
+      const actionLabel = formatLabel(actionParts.join(" "));
+      if (!map[moduleLabel]) map[moduleLabel] = [];
+      map[moduleLabel].push({ value: name, label: actionLabel });
+      return;
+    }
+
+    const label = formatLabel(
+      typeof perm === "string" ? name : perm?.group || name,
+    );
+    if (!map[MODULES_GROUP_LABEL]) map[MODULES_GROUP_LABEL] = [];
+    map[MODULES_GROUP_LABEL].push({ value: name, label });
   });
   return Object.entries(map).map(([module, perms]) => ({
     module,
@@ -207,7 +232,7 @@ const RolesModal = ({ open, onClose, selectedId = null }) => {
   );
 
   const { data: permissionsData, isFetching: permissionsLoading } =
-    useGetPermissionsQuery({ per_page: 1000 }, { skip: !open });
+    useGetPermissionsQuery({ pagination: "none" }, { skip: !open });
 
   const allPermissions = useMemo(
     () => permissionsData?.data?.data ?? permissionsData?.data ?? [],
@@ -255,7 +280,7 @@ const RolesModal = ({ open, onClose, selectedId = null }) => {
       reset({
         name: data?.name ?? "",
         description: data?.description ?? "",
-        permissions: normalizePermissions(data?.permissions),
+        permissions: getRolePermissions(data),
       });
     }
   }, [open, selectedId, roleData, reset]);
@@ -267,14 +292,15 @@ const RolesModal = ({ open, onClose, selectedId = null }) => {
 
   const handleConfirmSubmit = async () => {
     if (!pendingFormData) return;
+    const payload = buildPayload(pendingFormData);
     try {
       if (mode === "edit") {
-        await updateRole({ id: selectedId, ...pendingFormData }).unwrap();
+        await updateRole({ id: selectedId, ...payload }).unwrap();
         window.__snackbar__?.enqueueSnackbar("Role updated successfully.", {
           variant: "success",
         });
       } else {
-        await createRole(pendingFormData).unwrap();
+        await createRole(payload).unwrap();
         window.__snackbar__?.enqueueSnackbar("Role created successfully.", {
           variant: "success",
         });
@@ -295,6 +321,15 @@ const RolesModal = ({ open, onClose, selectedId = null }) => {
     if (isLoading) return;
     setConfirmOpen(false);
     setPendingFormData(null);
+  };
+
+  const handleBack = () => {
+    reset({
+      name: selectedRow?.name ?? "",
+      description: selectedRow?.description ?? "",
+      permissions: getRolePermissions(selectedRow),
+    });
+    setMode("view");
   };
 
   const headerIcon = {
@@ -367,7 +402,7 @@ const RolesModal = ({ open, onClose, selectedId = null }) => {
               <p className="rm__group-label">Permissions</p>
               <PermissionsChecklist
                 groups={permissionGroups}
-                value={normalizePermissions(selectedRow?.permissions)}
+                value={getRolePermissions(selectedRow)}
                 readOnly
                 isLoading={permissionsLoading}
               />
@@ -444,9 +479,7 @@ const RolesModal = ({ open, onClose, selectedId = null }) => {
             </div>
 
             <div className="rm__footer">
-              {selectedId && (
-                <BackModalButton onClick={() => setMode("view")} />
-              )}
+              {selectedId && <BackModalButton onClick={handleBack} />}
               <SaveButton
                 label={
                   isLoading

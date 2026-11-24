@@ -1,0 +1,20 @@
+@use "../../../styles/colors" as *;
+
+.one-user {
+  &__id-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 10px;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 500;
+    font-family: "Poppins", sans-serif;
+    color: $primary-main;
+    background: rgba($primary-main, 0.08);
+
+    [data-theme="dark"] & {
+      color: $secondary-main;
+      background: rgba(255, 255, 255, 0.06);
+    }
+  }
+}

@@ -281,7 +281,7 @@ const AreaChecklistsModal = ({ open, onClose, selectedId = null }) => {
       disableEscapeKeyDown
       maxWidth="sm"
       fullWidth
-      PaperProps={{ className: "acl__paper" }}>
+      slotProps={{ paper: { className: "acl__paper" } }}>
       <div className="acl__header">
         <div className="acl__header-title">
           {headerIcon[mode]}

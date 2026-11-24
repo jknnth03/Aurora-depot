@@ -45,7 +45,7 @@
     position: sticky;
     top: 0;
     z-index: 10;
-    background: #fff;
+    background: $bg-main;
 
     [data-theme="dark"] & {
       background: $bg-main;
@@ -308,7 +308,7 @@
     text-transform: uppercase;
     letter-spacing: 0.4px;
     color: $text-primary;
-    background: #fff;
+    background: $bg-main;
     text-align: left;
     border-right: 1px solid $border-color;
     white-space: nowrap;
@@ -803,7 +803,7 @@
     position: sticky;
     bottom: 0;
     z-index: 10;
-    background: #fff;
+    background: $bg-main;
 
     [data-theme="dark"] & {
       border-color: rgba(255, 255, 255, 0.08);
@@ -821,6 +821,254 @@
     display: flex;
     gap: 10px;
     align-items: center;
+  }
+
+  // Signature controls (View Checklist footer, left side)
+  &__sig-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+  }
+
+  &__btn-sig-add,
+  &__btn-sig-refuse {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 7px 16px;
+    border-radius: 8px;
+    font-family: "Poppins", sans-serif;
+    font-size: 0.74rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    cursor: pointer;
+    white-space: nowrap;
+    transition:
+      background 0.18s,
+      color 0.18s,
+      border-color 0.18s,
+      filter 0.18s;
+  }
+
+  &__btn-sig-add {
+    background: $primary-main;
+    color: #fff;
+    border: 1.5px solid $primary-main;
+
+    &:hover {
+      filter: brightness(0.92);
+    }
+
+    [data-theme="dark"] & {
+      background: $secondary-main;
+      border-color: $secondary-main;
+    }
+  }
+
+  &__btn-sig-refuse {
+    background: transparent;
+    color: #d32f2f;
+    border: 1.5px solid rgba(211, 47, 47, 0.4);
+
+    &:hover {
+      background: rgba(211, 47, 47, 0.08);
+      border-color: #d32f2f;
+    }
+
+    [data-theme="dark"] & {
+      color: #ef5350;
+      border-color: rgba(239, 83, 80, 0.45);
+
+      &:hover {
+        background: rgba(239, 83, 80, 0.12);
+        border-color: #ef5350;
+      }
+    }
+  }
+
+  &__sig-preview {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  &__sig-thumb-frame {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 3px 8px;
+    background: #fff;
+    border: 1.5px dashed $primary-main;
+    border-radius: 6px;
+
+    [data-theme="dark"] & {
+      border-color: rgba(255, 255, 255, 0.25);
+    }
+  }
+
+  &__sig-thumb {
+    height: 34px;
+    max-width: 120px;
+    object-fit: contain;
+  }
+
+  &__sig-meta {
+    font-size: 0.68rem;
+    color: $text-muted;
+    font-family: "Poppins", sans-serif;
+
+    [data-theme="dark"] & {
+      color: rgba(255, 255, 255, 0.45);
+    }
+  }
+
+  &__sig-refused {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 20px;
+    background: rgba(211, 47, 47, 0.08);
+    border: 1px solid rgba(211, 47, 47, 0.4);
+    color: #d32f2f;
+    font-size: 0.72rem;
+    font-weight: 600;
+    font-family: "Poppins", sans-serif;
+
+    [data-theme="dark"] & {
+      color: #ef5350;
+      border-color: rgba(239, 83, 80, 0.45);
+      background: rgba(239, 83, 80, 0.12);
+    }
+  }
+
+  // Refuse-to-sign confirmation dialog
+  &__confirm-paper {
+    border-radius: 14px !important;
+    background: #fff !important;
+    font-family: "Poppins", sans-serif !important;
+    overflow: hidden !important;
+
+    [data-theme="dark"] & {
+      background: $bg-main !important;
+    }
+  }
+
+  &__confirm-body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 28px 24px 12px;
+  }
+
+  &__confirm-icon {
+    color: #d32f2f !important;
+    font-size: 44px !important;
+    margin-bottom: 8px;
+
+    [data-theme="dark"] & {
+      color: #ef5350 !important;
+    }
+  }
+
+  &__confirm-title {
+    margin: 0 0 6px 0;
+    font-size: 1rem;
+    font-weight: 700;
+    color: $text-primary;
+    font-family: "Poppins", sans-serif;
+
+    [data-theme="dark"] & {
+      color: rgba(255, 255, 255, 0.9);
+    }
+  }
+
+  &__confirm-text {
+    margin: 0;
+    font-size: 0.8rem;
+    line-height: 1.55;
+    color: $text-muted;
+    font-family: "Poppins", sans-serif;
+
+    [data-theme="dark"] & {
+      color: rgba(255, 255, 255, 0.6);
+    }
+  }
+
+  &__confirm-footer {
+    padding: 16px 20px 20px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 10px;
+  }
+
+  &__btn-confirm-cancel {
+    padding: 7px 22px;
+    border: 1.5px solid $border-color;
+    background: transparent;
+    border-radius: 7px;
+    font-family: "Poppins", sans-serif;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: $text-muted;
+    cursor: pointer;
+    transition:
+      background 0.18s,
+      color 0.18s,
+      border-color 0.18s;
+
+    &:hover:not(:disabled) {
+      color: $primary-main;
+      border-color: $primary-main;
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    [data-theme="dark"] & {
+      border-color: rgba(255, 255, 255, 0.15);
+      color: rgba(255, 255, 255, 0.6);
+
+      &:hover:not(:disabled) {
+        color: $secondary-main;
+        border-color: $secondary-main;
+      }
+    }
+  }
+
+  &__btn-confirm-refuse {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 110px;
+    padding: 7px 22px;
+    border: 1.5px solid #d32f2f;
+    background: #d32f2f;
+    border-radius: 7px;
+    font-family: "Poppins", sans-serif;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #fff;
+    cursor: pointer;
+    transition:
+      background 0.18s,
+      border-color 0.18s;
+
+    &:hover:not(:disabled) {
+      background: #b71c1c;
+      border-color: #b71c1c;
+    }
+
+    &:disabled {
+      opacity: 0.7;
+      cursor: not-allowed;
+    }
   }
 
   &__error-summary {

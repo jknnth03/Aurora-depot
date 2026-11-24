@@ -127,7 +127,9 @@
     position: absolute;
     top: -9px;
     left: 12px;
-    background: $bg-paper;
+    // Top half matches the modal background, bottom half matches the input background,
+    // so no colored patch shows on the border
+    background: linear-gradient(to bottom, $bg-main 9px, $bg-paper 9px);
     padding: 0 4px;
     font-size: 0.68rem;
     font-weight: 400;
@@ -140,7 +142,7 @@
     font-family: "Poppins", sans-serif;
 
     [data-theme="dark"] & {
-      background: $bg-paper;
+      background: linear-gradient(to bottom, $bg-main 9px, $bg-paper 9px);
       color: rgba(255, 255, 255, 0.4);
     }
   }

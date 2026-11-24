@@ -6,98 +6,37 @@ import Dialog from "@mui/material/Dialog";
 import DialogContent from "@mui/material/DialogContent";
 import IconButton from "@mui/material/IconButton";
 import CloseIcon from "@mui/icons-material/Close";
-// import EditIcon from "@mui/icons-material/Edit";
 import VpnKeyIcon from "@mui/icons-material/VpnKey";
-// import RemoveRedEyeIcon from "@mui/icons-material/RemoveRedEye";
-import PushPinIcon from "@mui/icons-material/PushPin";
+import EditIcon from "@mui/icons-material/Edit";
+import RemoveRedEyeIcon from "@mui/icons-material/RemoveRedEye";
 import ReportProblemIcon from "@mui/icons-material/ReportProblem";
-import { SaveButton } from "../../../reusable-components/universal-buttons/UniversalButtons";
 import {
-  // useGetPermissionQuery,
+  SaveButton,
+  EditButton,
+  BackModalButton,
+} from "../../../reusable-components/universal-buttons/UniversalButtons";
+import {
   useCreatePermissionMutation,
-  // useUpdatePermissionMutation,
+  useUpdatePermissionMutation,
 } from "../../../features/api/usersmanagement/permissionsApi";
 import ConfirmDialog from "../../../reusable-components/confirm-dialog/ConfirmDialog";
-import "./PermissionsModal.scss";
+import "../roles/RolesModal.scss";
 
 const schema = yup.object({
-  name: yup.string().required("Permission name is required."),
-  group: yup.string().required("Group is required."),
-  description: yup.string().required("Description is required."),
+  name: yup.string().trim().required("Permission name is required."),
+  group: yup.string().trim().required("Group is required."),
+  description: yup.string().trim().required("Description is required."),
 });
 
-// const SkeletonLoader = () => (
-//   <div className="pm__skeleton-wrap">
-//     <div className="pm__skeleton-group">
-//       <span className="ut__skeleton pm__skeleton-label" />
-//       <span className="ut__skeleton pm__skeleton-field" />
-//     </div>
-//     <div className="pm__skeleton-group">
-//       <span className="ut__skeleton pm__skeleton-label" />
-//       <span className="ut__skeleton pm__skeleton-field" />
-//     </div>
-//     <div className="pm__skeleton-group">
-//       <span className="ut__skeleton pm__skeleton-label" />
-//       <span className="ut__skeleton pm__skeleton-field" />
-//     </div>
-//     <div className="pm__skeleton-footer">
-//       <span className="ut__skeleton pm__skeleton-btn" />
-//     </div>
-//   </div>
-// );
-
-// const ViewField = ({ label, value }) => (
-//   <div className="pm__field">
-//     <div className="pm__input-wrap pm__input-wrap--disabled">
-//       <label className="pm__label">{label}</label>
-//       <input type="text" value={value ?? ""} disabled readOnly />
-//     </div>
-//   </div>
-// );
-
-const FormField = ({ name, label, required, register, errors }) => {
-  const hasError = !!errors[name];
-
-  return (
-    <div className="pm__field">
-      <div
-        className={`pm__input-wrap${hasError ? " pm__input-wrap--error" : ""}`}>
-        <label className="pm__label">
-          {label}
-          {required && (
-            <span className="pm__required">
-              <PushPinIcon />
-            </span>
-          )}
-        </label>
-        <input type="text" {...register(name)} autoComplete="off" />
-      </div>
-      {hasError && (
-        <p className="pm__error">
-          <ReportProblemIcon />
-          {errors[name]?.message}
-        </p>
-      )}
-    </div>
-  );
-};
-
-// NOTE: View/Edit mode is on hold until GET /permissions/{id} and
-// PUT /permissions/{id} are confirmed by backend. This modal currently
-// only supports the Add Permission flow (selectedId is unused for now).
-const PermissionsModal = ({ open, onClose, selectedId = null }) => {
-  // const isViewOnly = !!selectedId;
-  // const [isEditMode, setIsEditMode] = useState(false);
-
-  // const { data: permissionDetail, isFetching: permissionLoading } =
-  //   useGetPermissionQuery(selectedId, { skip: !selectedId || !open });
-  // const rowData = permissionDetail?.data ?? null;
+const PermissionsModal = ({ open, onClose, selectedRow = null }) => {
+  const [mode, setMode] = useState("add");
+  const selectedId = selectedRow?.id ?? null;
 
   const [createPermission, { isLoading: isCreating }] =
     useCreatePermissionMutation();
-  // const [updatePermission, { isLoading: isUpdating }] =
-  //   useUpdatePermissionMutation();
-  const isSaving = isCreating;
+  const [updatePermission, { isLoading: isUpdating }] =
+    useUpdatePermissionMutation();
+  const isLoading = isCreating || isUpdating;
 
   const {
     register,
@@ -117,24 +56,19 @@ const PermissionsModal = ({ open, onClose, selectedId = null }) => {
   const [pendingFormData, setPendingFormData] = useState(null);
 
   useEffect(() => {
-    if (open) {
+    if (!open) return;
+    if (!selectedRow) {
+      setMode("add");
       reset({ name: "", group: "", description: "" });
+    } else {
+      setMode("view");
+      reset({
+        name: selectedRow.name ?? "",
+        group: selectedRow.group ?? "",
+        description: selectedRow.description ?? "",
+      });
     }
-  }, [open, reset]);
-
-  // useEffect(() => {
-  //   setIsEditMode(false);
-  // }, [selectedId]);
-
-  // useEffect(() => {
-  //   if (rowData) {
-  //     reset({
-  //       name: rowData?.name ?? "",
-  //       group: rowData?.group ?? "",
-  //       description: rowData?.description ?? "",
-  //     });
-  //   }
-  // }, [rowData, reset]);
+  }, [open, selectedRow, reset]);
 
   const onValidSubmit = (form) => {
     setPendingFormData(form);
@@ -144,18 +78,23 @@ const PermissionsModal = ({ open, onClose, selectedId = null }) => {
   const handleConfirmSubmit = async () => {
     if (!pendingFormData) return;
     try {
-      // if (isEditMode && selectedId) {
-      //   await updatePermission({ id: selectedId, ...pendingFormData }).unwrap();
-      //   window.__snackbar__?.enqueueSnackbar(
-      //     "Permission updated successfully.",
-      //     { variant: "success" },
-      //   );
-      // } else {
-      await createPermission(pendingFormData).unwrap();
-      window.__snackbar__?.enqueueSnackbar("Permission created successfully.", {
-        variant: "success",
-      });
-      // }
+      if (mode === "edit") {
+        await updatePermission({ id: selectedId, ...pendingFormData }).unwrap();
+        window.__snackbar__?.enqueueSnackbar(
+          "Permission updated successfully.",
+          {
+            variant: "success",
+          },
+        );
+      } else {
+        await createPermission(pendingFormData).unwrap();
+        window.__snackbar__?.enqueueSnackbar(
+          "Permission created successfully.",
+          {
+            variant: "success",
+          },
+        );
+      }
       setConfirmOpen(false);
       setPendingFormData(null);
       onClose();
@@ -169,109 +108,138 @@ const PermissionsModal = ({ open, onClose, selectedId = null }) => {
   };
 
   const handleCancelConfirm = () => {
-    if (isSaving) return;
+    if (isLoading) return;
     setConfirmOpen(false);
     setPendingFormData(null);
   };
 
-  // const handleEditClick = () => {
-  //   setIsEditMode(true);
-  // };
-
-  // const handleCancelEdit = () => {
-  //   setIsEditMode(false);
-  //   reset({
-  //     name: rowData?.name ?? "",
-  //     group: rowData?.group ?? "",
-  //     description: rowData?.description ?? "",
-  //   });
-  // };
-
-  const handleModalClose = () => {
-    // setIsEditMode(false);
-    setConfirmOpen(false);
-    setPendingFormData(null);
-    onClose();
+  const handleBack = () => {
+    reset({
+      name: selectedRow?.name ?? "",
+      group: selectedRow?.group ?? "",
+      description: selectedRow?.description ?? "",
+    });
+    setMode("view");
   };
 
-  const headerIcon = <VpnKeyIcon className="pm__header-icon" />;
-  const headerTitle = "Add Permission";
+  const headerIcon = {
+    add: <VpnKeyIcon className="rm__header-icon" />,
+    view: <RemoveRedEyeIcon className="rm__header-icon" />,
+    edit: <EditIcon className="rm__header-icon" />,
+  };
+
+  const headerTitle = {
+    add: "Add Permission",
+    view: "View Permission",
+    edit: "Edit Permission",
+  };
+
+  const isView = mode === "view";
+
+  const renderField = (name, label, extraStyle) => (
+    <div className="rm__field" style={extraStyle}>
+      <div
+        className={`rm__input-wrap${errors[name] ? " rm__input-wrap--error" : ""}`}>
+        <label className="rm__label">
+          {label}
+          <span className="rm__required">*</span>
+        </label>
+        <input type="text" {...register(name)} autoComplete="off" />
+      </div>
+      {errors[name] && (
+        <p className="rm__error">
+          <ReportProblemIcon />
+          {errors[name]?.message}
+        </p>
+      )}
+    </div>
+  );
+
+  const renderViewField = (label, value, extraStyle) => (
+    <div className="rm__field" style={extraStyle}>
+      <div className="rm__input-wrap rm__input-wrap--disabled">
+        <label className="rm__label">{label}</label>
+        <input type="text" value={value ?? ""} disabled readOnly />
+      </div>
+    </div>
+  );
 
   return (
     <Dialog
       open={open}
       onClose={(e, reason) => {
         if (reason === "backdropClick") return;
-        handleModalClose();
+        onClose();
       }}
       disableEscapeKeyDown
-      maxWidth="xs"
+      maxWidth="sm"
       fullWidth
-      PaperProps={{ className: "pm__paper" }}>
-      <div className="pm__header">
-        <div className="pm__header-title">
-          {headerIcon}
-          <span>{headerTitle}</span>
+      PaperProps={{ className: "rm__paper" }}>
+      <div className="rm__header">
+        <div className="rm__header-title">
+          {headerIcon[mode]}
+          <span>{headerTitle[mode]}</span>
         </div>
-        <div className="pm__header-actions">
-          <IconButton
-            className="pm__close"
-            onClick={handleModalClose}
-            size="small">
-            <CloseIcon fontSize="small" />
-          </IconButton>
-        </div>
+        <IconButton className="rm__close" onClick={onClose} size="small">
+          <CloseIcon fontSize="small" />
+        </IconButton>
       </div>
 
-      <DialogContent className="pm__content">
-        <form onSubmit={handleSubmit(onValidSubmit)} noValidate>
-          <div className="pm__group">
-            <p className="pm__group-label">Permission Details</p>
-            <FormField
-              name="name"
-              label="Permission Name"
-              required
-              register={register}
-              errors={errors}
-            />
-            <div style={{ marginTop: 12 }}>
-              <FormField
-                name="group"
-                label="Group"
-                required
-                register={register}
-                errors={errors}
-              />
+      <DialogContent className="rm__content">
+        {isView ? (
+          <>
+            <div className="rm__group">
+              <p className="rm__group-label">Permission Details</p>
+              {renderViewField("Permission Name", selectedRow?.name)}
+              {renderViewField("Group", selectedRow?.group, { marginTop: 12 })}
+              {renderViewField("Description", selectedRow?.description, {
+                marginTop: 12,
+              })}
             </div>
-            <div style={{ marginTop: 12 }}>
-              <FormField
-                name="description"
-                label="Description"
-                required
-                register={register}
-                errors={errors}
-              />
-            </div>
-          </div>
 
-          <div className="pm__footer">
-            <SaveButton
-              label={isSaving ? "Saving..." : "Add Permission"}
-              onClick={handleSubmit(onValidSubmit)}
-              disabled={isSaving}
-            />
-          </div>
-        </form>
+            <div className="rm__footer">
+              <EditButton onClick={() => setMode("edit")} />
+            </div>
+          </>
+        ) : (
+          <form onSubmit={handleSubmit(onValidSubmit)} noValidate>
+            <div className="rm__group">
+              <p className="rm__group-label">Permission Details</p>
+              {renderField("name", "Permission Name")}
+              {renderField("group", "Group", { marginTop: 12 })}
+              {renderField("description", "Description", { marginTop: 12 })}
+            </div>
+
+            <div className="rm__footer">
+              {selectedId && <BackModalButton onClick={handleBack} />}
+              <SaveButton
+                label={
+                  isLoading
+                    ? "Saving..."
+                    : mode === "edit"
+                      ? "Save Changes"
+                      : "Add Permission"
+                }
+                onClick={handleSubmit(onValidSubmit)}
+                disabled={isLoading}
+              />
+            </div>
+          </form>
+        )}
       </DialogContent>
 
       <ConfirmDialog
         open={confirmOpen}
         onClose={handleCancelConfirm}
         onConfirm={handleConfirmSubmit}
-        isLoading={isSaving}
-        title="Add Permission"
-        message={`Are you sure you want to add "${pendingFormData?.name}"?`}
-        confirmLabel="Add Permission"
+        isLoading={isLoading}
+        title={mode === "edit" ? "Update Permission" : "Add Permission"}
+        message={
+          mode === "edit"
+            ? `Are you sure you want to update "${pendingFormData?.name}"?`
+            : `Are you sure you want to add "${pendingFormData?.name}"?`
+        }
+        confirmLabel={mode === "edit" ? "Update Permission" : "Add Permission"}
         confirmVariant="success"
       />
     </Dialog>

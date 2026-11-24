@@ -718,7 +718,7 @@ const QAChecklistModal = ({ open, onClose, selectedChecklist = null }) => {
       disableEscapeKeyDown
       maxWidth="sm"
       fullWidth
-      PaperProps={{ className: "qcm__paper" }}>
+      slotProps={{ paper: { className: "qcm__paper" } }}>
       <div className="qcm__header">
         <div className="qcm__header-title">
           {headerIcon[mode]}

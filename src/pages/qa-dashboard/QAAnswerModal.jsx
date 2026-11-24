@@ -11,6 +11,7 @@ import Button from "@mui/material/Button";
 import Skeleton from "@mui/material/Skeleton";
 import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
+import CircularProgress from "@mui/material/CircularProgress";
 import CloseIcon from "@mui/icons-material/Close";
 import ChecklistIcon from "@mui/icons-material/Checklist";
 import VisibilityIcon from "@mui/icons-material/Visibility";
@@ -20,12 +21,17 @@ import DoneAllIcon from "@mui/icons-material/DoneAll";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import MenuBookIcon from "@mui/icons-material/MenuBook";
+import DrawIcon from "@mui/icons-material/Draw";
+import BlockIcon from "@mui/icons-material/Block";
+import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import ConfirmDialog from "../../reusable-components/confirm-dialog/ConfirmDialog";
 import AttachmentViewerDialog from "./AttachmentViewerDialog";
+import SignatureDialog from "./SignatureDialog";
 import GuidelineFileDialog from "../guidelines/GuidelineFileDialog";
 import {
   useAnswerChecklistMutation,
   useGetMyChecklistWeeklyRecordQuery,
+  useSignWeeklyRecordMutation,
 } from "../../features/api/qa-dashboard/qaDashboardApi";
 import { useGetScoreGradingsQuery } from "../../features/api/score-grading/scoreGradingApi";
 import { useGetGuidelinesQuery } from "../../features/api/guidelines/guidelinesApi";
@@ -440,6 +446,7 @@ const QAAnswerForm = ({
   weeklyRecordData,
   scoreGradingOptions,
   onClose,
+  onSaved,
 }) => {
   const sections = checklistDetail?.checklist?.sections ?? [];
   const flattenedQuestions = flattenSections(sections);
@@ -477,6 +484,8 @@ const QAAnswerForm = ({
   };
 
   const [answerChecklist] = useAnswerChecklistMutation();
+  const [signWeeklyRecord, { isLoading: isRefusing }] =
+    useSignWeeklyRecordMutation();
 
   const validationSchema = useMemo(
     () => buildValidationSchema(scoreGradingOptions),
@@ -515,6 +524,16 @@ const QAAnswerForm = ({
   const [autoFilledIndices, setAutoFilledIndices] = useState([]);
   const [attachmentErrors, setAttachmentErrors] = useState({});
   const [viewerAttachment, setViewerAttachment] = useState(null);
+
+  const weeklyRecord = weeklyRecordData?.data ?? weeklyRecordData;
+  const [signatureDialogOpen, setSignatureDialogOpen] = useState(false);
+  const [refuseConfirmOpen, setRefuseConfirmOpen] = useState(false);
+  const [localSignature, setLocalSignature] = useState(() => ({
+    signature_url: fixAttachmentUrl(weeklyRecord?.signature_url) ?? null,
+    signature_refused: weeklyRecord?.signature_refused ?? false,
+    signed_at: weeklyRecord?.signed_at ?? null,
+  }));
+  const canSign = viewOnly && !!checklistId && !!weeklyRecord?.id;
 
   const firstErrorRef = useRef(null);
   const timeInRef = useRef(dayjs());
@@ -656,6 +675,7 @@ const QAAnswerForm = ({
     const formData = new FormData();
     const timeIn = timeInRef.current;
     const timeOut = dayjs();
+    const isDraft = status === "in_progress";
 
     answers.forEach((answer, index) => {
       const question = flattenedQuestions[index]?.question;
@@ -683,6 +703,7 @@ const QAAnswerForm = ({
     formData.append("time_out", timeOut.format("HH:mm"));
     formData.append("time_out_date", timeOut.format("YYYY-MM-DD"));
     formData.append("status", status);
+    formData.append("is_draft", isDraft ? "1" : "0");
     formData.append("week", week);
     formData.append("month", month ?? dayjs().month() + 1);
     formData.append("year", year ?? dayjs().year());
@@ -740,6 +761,7 @@ const QAAnswerForm = ({
       );
       setConfirmOpen(false);
       setPendingFormData(null);
+      onSaved?.();
       onClose();
     } catch (err) {
       setConfirmOpen(false);
@@ -783,6 +805,7 @@ const QAAnswerForm = ({
         variant: "success",
       });
       setDraftConfirmOpen(false);
+      onSaved?.();
       onClose();
     } catch (err) {
       setDraftConfirmOpen(false);
@@ -793,6 +816,36 @@ const QAAnswerForm = ({
 
   const handleCancelDraftConfirm = () => {
     setDraftConfirmOpen(false);
+  };
+
+  const handleSignatureSaved = (signatureUrl) => {
+    setLocalSignature({
+      signature_url: fixAttachmentUrl(signatureUrl),
+      signature_refused: false,
+      signed_at: new Date().toISOString(),
+    });
+    setSignatureDialogOpen(false);
+    onSaved?.();
+  };
+
+  const handleConfirmRefuse = async () => {
+    if (!checklistId || !weeklyRecord?.id) return;
+    try {
+      await signWeeklyRecord({
+        id: checklistId,
+        recordId: weeklyRecord.id,
+        body: { refused: true },
+      }).unwrap();
+      setLocalSignature({
+        signature_url: null,
+        signature_refused: true,
+        signed_at: new Date().toISOString(),
+      });
+      setRefuseConfirmOpen(false);
+      onSaved?.();
+    } catch (err) {
+      console.error("Failed to refuse signature:", err);
+    }
   };
 
   const errorIndices = new Set();
@@ -811,7 +864,7 @@ const QAAnswerForm = ({
     return null;
   };
 
-  const isBusy = activeAction !== null;
+  const isBusy = activeAction !== null || isRefusing;
   const activeSection = sections[activeSectionIndex] ?? null;
   const activeProgress = activeSection
     ? getSectionProgress(activeSection)
@@ -826,14 +879,15 @@ const QAAnswerForm = ({
           noValidate>
           {sections.length > 0 && (
             <div className="qam__section-nav">
-              <IconButton
+              <Button
                 type="button"
                 size="small"
-                className="qam__section-nav-back"
+                className="qam__section-nav-next"
+                startIcon={<ChevronLeftIcon fontSize="small" />}
                 onClick={() => setActiveSectionIndex((i) => Math.max(i - 1, 0))}
                 disabled={activeSectionIndex === 0}>
-                <ChevronLeftIcon fontSize="small" />
-              </IconButton>
+                PREVIOUS
+              </Button>
               <span className="qam__section-nav-label">
                 {activeSection?.name}
               </span>
@@ -1185,6 +1239,46 @@ const QAAnswerForm = ({
               {errorCount === 1 ? "s" : ""} required info
             </span>
           )}
+
+          {canSign &&
+            (localSignature.signature_url ? (
+              <div className="qam__sig-preview">
+                <div className="qam__sig-thumb-frame">
+                  <img
+                    src={localSignature.signature_url}
+                    alt="Signature"
+                    className="qam__sig-thumb"
+                  />
+                </div>
+                {localSignature.signed_at && (
+                  <span className="qam__sig-meta">
+                    Signed {new Date(localSignature.signed_at).toLocaleString()}
+                  </span>
+                )}
+              </div>
+            ) : localSignature.signature_refused ? (
+              <span className="qam__sig-refused">
+                <WarningAmberIcon sx={{ fontSize: 15 }} />
+                <span>Signature refused</span>
+              </span>
+            ) : (
+              <div className="qam__sig-actions">
+                <button
+                  className="qam__btn-sig-add"
+                  type="button"
+                  onClick={() => setSignatureDialogOpen(true)}>
+                  <DrawIcon sx={{ fontSize: 15 }} />
+                  <span>Add Signature</span>
+                </button>
+                <button
+                  className="qam__btn-sig-refuse"
+                  type="button"
+                  onClick={() => setRefuseConfirmOpen(true)}>
+                  <BlockIcon sx={{ fontSize: 15 }} />
+                  <span>Refuse to Sign</span>
+                </button>
+              </div>
+            ))}
         </div>
         <div className="qam__footer-right">
           <Button
@@ -1239,6 +1333,50 @@ const QAAnswerForm = ({
         onClose={() => setViewerAttachment(null)}
         attachment={viewerAttachment}
       />
+
+      <SignatureDialog
+        open={signatureDialogOpen}
+        onClose={() => setSignatureDialogOpen(false)}
+        checklistId={checklistId}
+        recordId={weeklyRecord?.id}
+        onSignatureSaved={handleSignatureSaved}
+      />
+
+      <Dialog
+        open={refuseConfirmOpen}
+        onClose={() => setRefuseConfirmOpen(false)}
+        maxWidth="xs"
+        fullWidth
+        PaperProps={{ className: "qam__confirm-paper" }}>
+        <div className="qam__confirm-body">
+          <WarningAmberIcon className="qam__confirm-icon" />
+          <p className="qam__confirm-title">Refuse to Sign?</p>
+          <p className="qam__confirm-text">
+            Are you sure you want to refuse to sign this weekly record? This
+            action will be recorded and cannot be undone from here.
+          </p>
+        </div>
+        <DialogActions className="qam__confirm-footer">
+          <button
+            className="qam__btn-confirm-cancel"
+            onClick={() => setRefuseConfirmOpen(false)}
+            disabled={isRefusing}
+            type="button">
+            Cancel
+          </button>
+          <button
+            className="qam__btn-confirm-refuse"
+            onClick={handleConfirmRefuse}
+            disabled={isRefusing}
+            type="button">
+            {isRefusing ? (
+              <CircularProgress size={14} sx={{ color: "#fff" }} />
+            ) : (
+              "Yes, Refuse"
+            )}
+          </button>
+        </DialogActions>
+      </Dialog>
     </>
   );
 };
@@ -1246,6 +1384,7 @@ const QAAnswerForm = ({
 const QAAnswerModal = ({
   open,
   onClose,
+  onSaved,
   checklistId,
   checklistDetail,
   week,
@@ -1257,13 +1396,21 @@ const QAAnswerModal = ({
   const { data: scoreGradingData, isFetching: isScoreGradingFetching } =
     useGetScoreGradingsQuery(undefined, {
       skip: !open,
+      refetchOnMountOrArgChange: true,
     });
 
-  const { data: weeklyRecordData, isFetching: isWeeklyRecordFetching } =
-    useGetMyChecklistWeeklyRecordQuery(
-      { id: checklistId, recordId: weeklyRecordId },
-      { skip: !open || !checklistId || !weeklyRecordId },
-    );
+  const {
+    currentData: fetchedWeeklyRecordData,
+    isFetching: isWeeklyRecordFetching,
+  } = useGetMyChecklistWeeklyRecordQuery(
+    { id: checklistId, recordId: weeklyRecordId },
+    {
+      skip: !open || !checklistId || !weeklyRecordId,
+      refetchOnMountOrArgChange: true,
+    },
+  );
+
+  const weeklyRecordData = weeklyRecordId ? fetchedWeeklyRecordData : undefined;
 
   const { data: guidelinesData } = useGetGuidelinesQuery(
     { status: "active", per_page: 100 },
@@ -1347,7 +1494,7 @@ const QAAnswerModal = ({
         disableEscapeKeyDown
         maxWidth="lg"
         fullWidth
-        PaperProps={{ className: "qam__paper" }}>
+        slotProps={{ paper: { className: "qam__paper" } }}>
         <div className="qam__header">
           <div className="qam__header-top">
             <div className="qam__header-title">
@@ -1421,6 +1568,7 @@ const QAAnswerModal = ({
             weeklyRecordData={weeklyRecordData}
             scoreGradingOptions={scoreGradingOptions}
             onClose={onClose}
+            onSaved={onSaved}
           />
         )}
       </Dialog>

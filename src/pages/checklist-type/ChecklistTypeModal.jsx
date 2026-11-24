@@ -309,7 +309,7 @@ const ChecklistTypeModal = ({ open, onClose, selectedId = null }) => {
       disableEscapeKeyDown
       maxWidth="sm"
       fullWidth
-      PaperProps={{ className: "ctm__paper" }}>
+      slotProps={{ paper: { className: "ctm__paper" } }}>
       <div className="ctm__header">
         <div className="ctm__header-title">
           {headerIcon[mode]}

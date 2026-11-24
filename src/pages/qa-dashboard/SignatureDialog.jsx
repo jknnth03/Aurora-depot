@@ -63,7 +63,7 @@ const SignatureDialog = ({
       onClose={handleClose}
       maxWidth="sm"
       fullWidth
-      PaperProps={{ className: "sig__paper" }}>
+      slotProps={{ paper: { className: "sig__paper" } }}>
       <div className="sig__header">
         <div className="sig__header-left">
           <DrawIcon className="sig__header-icon" />

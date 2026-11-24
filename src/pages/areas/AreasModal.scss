@@ -1,6 +1,6 @@
 @use "../../styles/colors" as *;
 
-.am {
+.areas-modal {
   &__paper {
     border-radius: 14px !important;
     font-family: "Poppins", sans-serif;
@@ -162,19 +162,24 @@
     align-items: center;
     border: 1.5px solid $border-color;
     border-radius: 8px;
-    background: #fff;
+    background: $bg-main;
     padding: 0 12px;
     transition: border-color 0.2s;
     position: relative;
 
-    .am__label {
-      background: #fff;
+    [data-theme="dark"] & {
+      background: $bg-main;
+      border-color: rgba(255, 255, 255, 0.12);
+    }
+
+    .areas-modal__label {
+      background: $bg-main;
     }
 
     &:focus-within {
       border-color: $primary-main;
 
-      .am__label {
+      .areas-modal__label {
         color: $primary-main;
       }
     }
@@ -182,7 +187,7 @@
     &--error {
       border-color: $status-error !important;
 
-      .am__label {
+      .areas-modal__label {
         color: $status-error !important;
       }
     }
@@ -193,17 +198,9 @@
       cursor: default;
       pointer-events: none;
 
-      .am__label {
-        background: $bg-main;
-      }
-
       [data-theme="dark"] & {
         background: rgba(255, 255, 255, 0.02) !important;
         border-color: rgba(255, 255, 255, 0.06) !important;
-
-        .am__label {
-          background: $bg-main;
-        }
       }
 
       input {
@@ -215,7 +212,7 @@
         }
       }
 
-      .am__label {
+      .areas-modal__label {
         color: $text-muted !important;
         opacity: 0.7;
       }
@@ -358,14 +355,14 @@
   &__toggle-input {
     display: none;
 
-    &:checked + .am__toggle-track {
+    &:checked + .areas-modal__toggle-track {
       background: $primary-main;
 
       [data-theme="dark"] & {
         background: $secondary-main;
       }
 
-      .am__toggle-thumb {
+      .areas-modal__toggle-thumb {
         transform: translateX(16px);
       }
     }
@@ -399,7 +396,7 @@
     position: relative;
     border: 1.5px solid $border-color;
     border-radius: 8px;
-    background: #fff;
+    background: $bg-main;
     transition: border-color 0.2s;
 
     [data-theme="dark"] & {
@@ -499,7 +496,7 @@
     border: 1.5px solid $border-color;
     border-top: none;
     border-radius: 0 0 8px 8px;
-    background: #fff;
+    background: $bg-main;
     overflow: hidden;
 
     [data-theme="dark"] & {

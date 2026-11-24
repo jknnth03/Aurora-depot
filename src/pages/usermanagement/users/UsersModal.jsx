@@ -21,6 +21,7 @@ import {
   useCreateUserMutation,
   useChangePasswordMutation,
   useGetOneChargingsQuery,
+  useGetSedarEmployeesQuery,
 } from "../../../features/api/usersmanagement/usersApi";
 import { useGetRolesQuery } from "../../../features/api/usersmanagement/rolesApi";
 import ConfirmDialog from "../../../reusable-components/confirm-dialog/ConfirmDialog";
@@ -31,6 +32,58 @@ const genderLabel = (value) => {
   if (value === "male") return "Male";
   if (value === "female") return "Female";
   return "—";
+};
+
+// Pulls the list out of the API response (paginated: data.data.data, or plain array: data.data)
+const extractList = (response) => {
+  const list = response?.data?.data ?? response?.data ?? [];
+  return Array.isArray(list) ? list : [];
+};
+
+// Unique value of a sedar employee (the response has no "id" field)
+const getEmployeeValue = (e) => e?.general_info?.full_id_number;
+
+// Label shown in the Search Employee dropdown, e.g. "CE-SFO-148 ZARATE, RYAN ARVEE"
+const getEmployeeLabel = (e) => e?.general_info?.full_id_number_full_name ?? "";
+
+// Lowercase letters/numbers only (removes accents, spaces, dots, etc.)
+const cleanForUsername = (text) =>
+  String(text ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
+
+// Username suggestion: 1st letter of 1st name + 1st letter of 2nd name + last name
+// e.g. RYAN JOSEPH DABU -> rjdabu
+// 2nd name = 2nd word of first_name, or the middle name if first_name is a single word
+const buildUsername = (info = {}) => {
+  const firstWords = String(info.first_name ?? "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  const firstInitial = cleanForUsername(firstWords[0]?.[0]);
+  const secondName = firstWords[1] ?? info.middle_name ?? "";
+  const secondInitial = cleanForUsername(String(secondName).trim()[0]);
+
+  return `${firstInitial}${secondInitial}${cleanForUsername(info.last_name)}`;
+};
+
+// Maps a selected sedar employee (general_info) to the form fields
+const mapEmployeeToForm = (e) => {
+  const info = e?.general_info ?? {};
+  const gender = String(info.gender ?? "").toLowerCase();
+
+  return {
+    first_name: info.first_name ?? "",
+    middle_name: info.middle_name ?? "",
+    last_name: info.last_name ?? "",
+    suffix: info.suffix ?? "",
+    id_prefix: info.prefix_id ?? "",
+    id_no: info.id_number ?? "",
+    gender: ["male", "female"].includes(gender) ? gender : "",
+    username: buildUsername(info),
+  };
 };
 
 const FIELD_GROUPS = [
@@ -120,6 +173,13 @@ const SearchAutocomplete = ({
   useQueryHook,
   getOptionLabel = (o) => o.name,
   getOptionValue = (o) => o.id,
+  // Extra props (defaults keep the Role / One Charging behavior unchanged)
+  required = true,
+  queryArgs = { status: "active" },
+  serverSearch = true, // false = fetch once, search happens on the client
+  filterMode = "startsWith", // "startsWith" | "includes" | false (no client filtering)
+  maxOptions, // limit how many options are rendered (for very large lists)
+  onSelectOption,
 }) => {
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 400);
@@ -127,17 +187,25 @@ const SearchAutocomplete = ({
   const wrapRef = useRef(null);
 
   const { data, isFetching } = useQueryHook(
-    { status: "active", search: debouncedSearch, page: 1, per_page: 50 },
+    serverSearch
+      ? { ...queryArgs, search: debouncedSearch, page: 1, per_page: 50 }
+      : queryArgs,
     { skip: !open },
   );
-  const options = data?.data?.data ?? [];
-  const filteredOptions = search.trim()
-    ? options.filter((o) =>
-        getOptionLabel(o)
-          ?.toLowerCase()
-          .startsWith(search.trim().toLowerCase()),
-      )
-    : options;
+  const options = extractList(data);
+
+  const keyword = search.trim().toLowerCase();
+  let filteredOptions = options;
+  if (keyword && filterMode) {
+    filteredOptions = options.filter((o) => {
+      const text = getOptionLabel(o)?.toLowerCase() ?? "";
+      return filterMode === "includes"
+        ? text.includes(keyword)
+        : text.startsWith(keyword);
+    });
+  }
+  if (maxOptions) filteredOptions = filteredOptions.slice(0, maxOptions);
+
   const selected = options.find((o) => getOptionValue(o) === value) ?? null;
 
   useEffect(() => {
@@ -153,6 +221,7 @@ const SearchAutocomplete = ({
 
   const handleSelect = (option) => {
     onChange(getOptionValue(option));
+    onSelectOption?.(option);
     setSearch("");
     setOpen(false);
   };
@@ -161,7 +230,7 @@ const SearchAutocomplete = ({
     <div className={`um__ac${error ? " um__ac--error" : ""}`} ref={wrapRef}>
       <label className="um__label">
         {label}
-        <span className="um__required">*</span>
+        {required && <span className="um__required">*</span>}
       </label>
 
       <div className="um__ac-box" onClick={() => setOpen((p) => !p)}>
@@ -459,6 +528,9 @@ const UsersModal = ({
   const isViewOnly = !!selectedId;
   const [isEditMode, setIsEditMode] = useState(false);
 
+  // Search Employee (sedar-employees) — not part of the submitted form, only used to autofill
+  const [selectedEmployee, setSelectedEmployee] = useState(null);
+
   const { data: userDetail, isFetching: userLoading } = useGetUserQuery(
     selectedId,
     { skip: !selectedId || !open },
@@ -474,6 +546,7 @@ const UsersModal = ({
     handleSubmit,
     reset,
     control,
+    setValue,
     formState: { errors },
   } = useForm({
     resolver: yupResolver(addSchema),
@@ -512,6 +585,7 @@ const UsersModal = ({
 
   useEffect(() => {
     if (open && !selectedId) {
+      setSelectedEmployee(null);
       reset({
         role_id: "",
         one_charging_id: "",
@@ -539,6 +613,15 @@ const UsersModal = ({
     setIsEditMode(false);
     resetPw({ old_password: "", new_password: "", confirm_password: "" });
   }, [selectedId, resetPw]);
+
+  // Autofill the form fields (including a suggested username) from the selected sedar employee
+  const handleEmployeeSelect = (employee) => {
+    setSelectedEmployee(employee);
+    const mapped = mapEmployeeToForm(employee);
+    Object.entries(mapped).forEach(([name, value]) => {
+      setValue(name, value, { shouldDirty: true, shouldValidate: true });
+    });
+  };
 
   const onValidSubmit = (form) => {
     setConfirmMode("add");
@@ -800,6 +883,36 @@ const UsersModal = ({
           </>
         ) : (
           <form onSubmit={handleSubmit(onValidSubmit)} noValidate>
+            {/* Search Employee — hidden when the form is prefilled from a sync */}
+            {!prefillData && (
+              <div className="um__group">
+                <p className="um__group-label">Search Employee</p>
+                <div className="um__grid">
+                  <div className="um__col-full">
+                    <SearchAutocomplete
+                      label="Employee"
+                      required={false}
+                      value={getEmployeeValue(selectedEmployee) ?? ""}
+                      onChange={() => {}}
+                      displayValue={
+                        selectedEmployee
+                          ? getEmployeeLabel(selectedEmployee)
+                          : ""
+                      }
+                      useQueryHook={useGetSedarEmployeesQuery}
+                      queryArgs={{}}
+                      serverSearch={false}
+                      filterMode="includes"
+                      maxOptions={50}
+                      getOptionLabel={getEmployeeLabel}
+                      getOptionValue={getEmployeeValue}
+                      onSelectOption={handleEmployeeSelect}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
             {FIELD_GROUPS.map((group) => (
               <div key={group.label} className="um__group">
                 <p className="um__group-label">{group.label}</p>

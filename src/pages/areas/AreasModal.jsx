@@ -35,21 +35,21 @@ const schema = yup.object({
 });
 
 const SkeletonLoader = () => (
-  <div className="am__skeleton-wrap">
-    <div className="am__skeleton-group">
-      <span className="ut__skeleton am__skeleton-label" />
-      <span className="ut__skeleton am__skeleton-field" />
+  <div className="areas-modal__skeleton-wrap">
+    <div className="areas-modal__skeleton-group">
+      <span className="ut__skeleton areas-modal__skeleton-label" />
+      <span className="ut__skeleton areas-modal__skeleton-field" />
     </div>
-    <div className="am__skeleton-group">
-      <span className="ut__skeleton am__skeleton-label" />
-      <span className="ut__skeleton am__skeleton-field" />
+    <div className="areas-modal__skeleton-group">
+      <span className="ut__skeleton areas-modal__skeleton-label" />
+      <span className="ut__skeleton areas-modal__skeleton-field" />
     </div>
-    <div className="am__skeleton-group">
-      <span className="ut__skeleton am__skeleton-label" />
-      <span className="ut__skeleton am__skeleton-field" />
+    <div className="areas-modal__skeleton-group">
+      <span className="ut__skeleton areas-modal__skeleton-label" />
+      <span className="ut__skeleton areas-modal__skeleton-field" />
     </div>
-    <div className="am__skeleton-footer">
-      <span className="ut__skeleton am__skeleton-btn" />
+    <div className="areas-modal__skeleton-footer">
+      <span className="ut__skeleton areas-modal__skeleton-btn" />
     </div>
   </div>
 );
@@ -125,13 +125,15 @@ const SearchSelect = ({
   return (
     <div
       ref={wrapRef}
-      className={`am__ac${error ? " am__ac--error" : ""}${open ? " am__ac--open" : ""}`}>
-      <div className="am__ac-box" onClick={() => setOpen((prev) => !prev)}>
+      className={`areas-modal__ac${error ? " areas-modal__ac--error" : ""}${open ? " areas-modal__ac--open" : ""}`}>
+      <div
+        className="areas-modal__ac-box"
+        onClick={() => setOpen((prev) => !prev)}>
         {open ? (
-          <div className="am__ac-search-wrap">
+          <div className="areas-modal__ac-search-wrap">
             <SearchIcon style={{ fontSize: "1rem" }} />
             <input
-              className="am__ac-input"
+              className="areas-modal__ac-input"
               autoFocus
               value={query}
               onChange={(e) => setQuery(e.target.value)}
@@ -142,30 +144,34 @@ const SearchSelect = ({
             />
           </div>
         ) : selectedOption ? (
-          <span className="am__ac-value">{getOptionLabel(selectedOption)}</span>
+          <span className="areas-modal__ac-value">
+            {getOptionLabel(selectedOption)}
+          </span>
         ) : (
-          <span className="am__ac-placeholder">
+          <span className="areas-modal__ac-placeholder">
             {loading ? "Loading..." : placeholder}
           </span>
         )}
-        <span className="am__ac-arrow">
+        <span className="areas-modal__ac-arrow">
           {open ? <KeyboardArrowUpIcon /> : <KeyboardArrowDownIcon />}
         </span>
       </div>
 
       {open && (
-        <div className="am__ac-dropdown">
-          <div className="am__ac-options">
+        <div className="areas-modal__ac-dropdown">
+          <div className="areas-modal__ac-options">
             {loading ? (
-              <p className="am__ac-empty">Loading...</p>
+              <p className="areas-modal__ac-empty">Loading...</p>
             ) : filteredOptions.length === 0 ? (
-              <p className="am__ac-empty">No results found.</p>
+              <p className="areas-modal__ac-empty">No results found.</p>
             ) : (
               filteredOptions.map((option) => (
                 <div
                   key={option.id}
-                  className={`am__ac-option${
-                    option.id === value ? " am__ac-option--selected" : ""
+                  className={`areas-modal__ac-option${
+                    option.id === value
+                      ? " areas-modal__ac-option--selected"
+                      : ""
                   }`}
                   onClick={() => handleSelect(option)}>
                   {getOptionLabel(option)}
@@ -286,9 +292,9 @@ const AreasModal = ({ open, onClose, selectedId = null }) => {
   };
 
   const headerIcon = {
-    add: <MapIcon className="am__header-icon" />,
-    view: <RemoveRedEyeIcon className="am__header-icon" />,
-    edit: <EditIcon className="am__header-icon" />,
+    add: <MapIcon className="areas-modal__header-icon" />,
+    view: <RemoveRedEyeIcon className="areas-modal__header-icon" />,
+    edit: <EditIcon className="areas-modal__header-icon" />,
   };
 
   const headerTitle = {
@@ -309,27 +315,30 @@ const AreasModal = ({ open, onClose, selectedId = null }) => {
       disableEscapeKeyDown
       maxWidth="sm"
       fullWidth
-      PaperProps={{ className: "am__paper" }}>
-      <div className="am__header">
-        <div className="am__header-title">
+      slotProps={{ paper: { className: "areas-modal__paper" } }}>
+      <div className="areas-modal__header">
+        <div className="areas-modal__header-title">
           {headerIcon[mode]}
           <span>{headerTitle[mode]}</span>
         </div>
-        <IconButton className="am__close" onClick={onClose} size="small">
+        <IconButton
+          className="areas-modal__close"
+          onClick={onClose}
+          size="small">
           <CloseIcon fontSize="small" />
         </IconButton>
       </div>
 
-      <DialogContent className="am__content">
+      <DialogContent className="areas-modal__content">
         {areaLoading ? (
           <SkeletonLoader />
         ) : isView ? (
           <>
-            <div className="am__group">
-              <p className="am__group-label">Area Details</p>
-              <div className="am__field">
-                <div className="am__input-wrap am__input-wrap--disabled">
-                  <label className="am__label">Code</label>
+            <div className="areas-modal__group">
+              <p className="areas-modal__group-label">Area Details</p>
+              <div className="areas-modal__field">
+                <div className="areas-modal__input-wrap areas-modal__input-wrap--disabled">
+                  <label className="areas-modal__label">Code</label>
                   <input
                     type="text"
                     value={selectedRow?.code ?? ""}
@@ -338,9 +347,9 @@ const AreasModal = ({ open, onClose, selectedId = null }) => {
                   />
                 </div>
               </div>
-              <div className="am__field" style={{ marginTop: 12 }}>
-                <div className="am__input-wrap am__input-wrap--disabled">
-                  <label className="am__label">Area Name</label>
+              <div className="areas-modal__field" style={{ marginTop: 12 }}>
+                <div className="areas-modal__input-wrap areas-modal__input-wrap--disabled">
+                  <label className="areas-modal__label">Area Name</label>
                   <input
                     type="text"
                     value={selectedRow?.name ?? ""}
@@ -349,9 +358,9 @@ const AreasModal = ({ open, onClose, selectedId = null }) => {
                   />
                 </div>
               </div>
-              <div className="am__field" style={{ marginTop: 12 }}>
-                <div className="am__input-wrap am__input-wrap--disabled">
-                  <label className="am__label">Area Head</label>
+              <div className="areas-modal__field" style={{ marginTop: 12 }}>
+                <div className="areas-modal__input-wrap areas-modal__input-wrap--disabled">
+                  <label className="areas-modal__label">Area Head</label>
                   <input
                     type="text"
                     value={getAreaHeadName(selectedRow?.area_head)}
@@ -362,50 +371,52 @@ const AreasModal = ({ open, onClose, selectedId = null }) => {
               </div>
             </div>
 
-            <div className="am__footer">
+            <div className="areas-modal__footer">
               <EditButton onClick={() => setMode("edit")} />
             </div>
           </>
         ) : (
           <form onSubmit={handleSubmit(onValidSubmit)} noValidate>
-            <div className="am__group">
-              <p className="am__group-label">Area Details</p>
-              <div className="am__field">
+            <div className="areas-modal__group">
+              <p className="areas-modal__group-label">Area Details</p>
+              <div className="areas-modal__field">
                 <div
-                  className={`am__input-wrap${errors.code ? " am__input-wrap--error" : ""}`}>
-                  <label className="am__label">
+                  className={`areas-modal__input-wrap${errors.code ? " areas-modal__input-wrap--error" : ""}`}>
+                  <label className="areas-modal__label">
                     Code
-                    <span className="am__required">*</span>
+                    <span className="areas-modal__required">*</span>
                   </label>
                   <input type="text" {...register("code")} autoComplete="off" />
                 </div>
                 {errors.code && (
-                  <p className="am__error">
+                  <p className="areas-modal__error">
                     <ReportProblemIcon />
                     {errors.code?.message}
                   </p>
                 )}
               </div>
 
-              <div className="am__field" style={{ marginTop: 12 }}>
+              <div className="areas-modal__field" style={{ marginTop: 12 }}>
                 <div
-                  className={`am__input-wrap${errors.name ? " am__input-wrap--error" : ""}`}>
-                  <label className="am__label">
+                  className={`areas-modal__input-wrap${errors.name ? " areas-modal__input-wrap--error" : ""}`}>
+                  <label className="areas-modal__label">
                     Area Name
-                    <span className="am__required">*</span>
+                    <span className="areas-modal__required">*</span>
                   </label>
                   <input type="text" {...register("name")} autoComplete="off" />
                 </div>
                 {errors.name && (
-                  <p className="am__error">
+                  <p className="areas-modal__error">
                     <ReportProblemIcon />
                     {errors.name?.message}
                   </p>
                 )}
               </div>
 
-              <div className="am__field" style={{ marginTop: 12 }}>
-                <label className="am__label am__label--static">Area Head</label>
+              <div className="areas-modal__field" style={{ marginTop: 12 }}>
+                <label className="areas-modal__label areas-modal__label--static">
+                  Area Head
+                </label>
                 <Controller
                   name="area_head_id"
                   control={control}
@@ -422,7 +433,7 @@ const AreasModal = ({ open, onClose, selectedId = null }) => {
                   )}
                 />
                 {errors.area_head_id && (
-                  <p className="am__error">
+                  <p className="areas-modal__error">
                     <ReportProblemIcon />
                     {errors.area_head_id?.message}
                   </p>
@@ -430,7 +441,7 @@ const AreasModal = ({ open, onClose, selectedId = null }) => {
               </div>
             </div>
 
-            <div className="am__footer">
+            <div className="areas-modal__footer">
               {selectedId && (
                 <BackModalButton onClick={() => setMode("view")} />
               )}

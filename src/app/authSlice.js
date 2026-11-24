@@ -7,6 +7,9 @@ const initialState = {
   isLoggingOut: false,
 };
 
+const getAccessPermissions = (user) =>
+  user?.role?.access_permission || user?.access_permission || [];
+
 const authSlice = createSlice({
   name: "auth",
   initialState,
@@ -15,7 +18,7 @@ const authSlice = createSlice({
       const { user, token } = action.payload;
       state.user = {
         ...user,
-        access_permissions: user.role?.permissions || [],
+        access_permissions: getAccessPermissions(user),
         role_name: user.role?.name || null,
       };
       state.token = token;
@@ -29,9 +32,9 @@ const authSlice = createSlice({
         state.user = {
           ...state.user,
           ...action.payload,
-          access_permissions:
-            action.payload.role?.access_permissions ||
-            state.user.access_permissions,
+          access_permissions: action.payload.role
+            ? getAccessPermissions(action.payload)
+            : state.user.access_permissions,
         };
       }
     },
@@ -58,4 +61,6 @@ export const selectIsLoggingOut = (state) => state.auth.isLoggingOut;
 export const selectUserPermissions = (state) =>
   state.auth?.user?.access_permissions || [];
 export const selectHasPermission = (permission) => (state) =>
-  (state.auth?.user?.access_permissions || []).includes(permission);
+  (state.auth?.user?.access_permissions || []).some(
+    (p) => p === permission || p.startsWith(`${permission}.`),
+  );

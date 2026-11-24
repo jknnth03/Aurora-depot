@@ -103,7 +103,7 @@ const GracePeriodSettingModal = ({ open, onClose }) => {
       disableEscapeKeyDown
       maxWidth="sm"
       fullWidth
-      PaperProps={{ className: "gpsm__paper" }}>
+      slotProps={{ paper: { className: "gpsm__paper" } }}>
       <div className="gpsm__header">
         <div className="gpsm__header-title">
           <EventBusyIcon className="gpsm__header-icon" />

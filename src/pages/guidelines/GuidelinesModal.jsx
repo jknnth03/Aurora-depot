@@ -278,7 +278,7 @@ const GuidelinesModal = ({ open, onClose, selectedRow = null }) => {
         disableEscapeKeyDown
         maxWidth="xs"
         fullWidth
-        PaperProps={{ className: "gm__paper" }}>
+        slotProps={{ paper: { className: "gm__paper" } }}>
         <div className="gm__header">
           <div className="gm__header-title">
             {headerIcon[mode]}

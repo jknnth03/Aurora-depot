@@ -28,6 +28,23 @@ const AttachmentGalleryDialog = ({ open, onClose, attachments = [] }) => {
     setIsError(false);
   }, [open, index, current?.url]);
 
+  useEffect(() => {
+    if (!open) return undefined;
+
+    const handleKeyDown = (e) => {
+      if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        setIndex((i) => Math.max(i - 1, 0));
+      } else if (e.key === "ArrowRight") {
+        e.preventDefault();
+        setIndex((i) => Math.min(i + 1, Math.max(total - 1, 0)));
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [open, total]);
+
   const handleBack = () => setIndex((i) => Math.max(i - 1, 0));
   const handleNext = () => setIndex((i) => Math.min(i + 1, total - 1));
 
@@ -55,43 +72,32 @@ const AttachmentGalleryDialog = ({ open, onClose, attachments = [] }) => {
             <p>No attachments to display.</p>
           </div>
         ) : (
-          <>
-            <div className="agd__stage">
-              {isLoading && !isError && (
-                <div className="agd__state">
-                  <CircularProgress size={30} />
-                  <p>Loading photo...</p>
-                </div>
-              )}
-              {isError && (
-                <div className="agd__state">
-                  <BrokenImageIcon sx={{ fontSize: 32 }} />
-                  <p>Failed to load image.</p>
-                </div>
-              )}
-              <img
-                key={current.url}
-                src={current.url}
-                alt={current.name ?? `Photo ${index + 1}`}
-                className="agd__image"
-                style={{ display: isLoading || isError ? "none" : "block" }}
-                onLoad={() => setIsLoading(false)}
-                onError={() => {
-                  setIsLoading(false);
-                  setIsError(true);
-                }}
-              />
-            </div>
-
-            <div className="agd__caption">
-              {current.label && (
-                <span className="agd__caption-label">{current.label}</span>
-              )}
-              {current.name && (
-                <span className="agd__caption-name">{current.name}</span>
-              )}
-            </div>
-          </>
+          <div className="agd__stage">
+            {isLoading && !isError && (
+              <div className="agd__state">
+                <CircularProgress size={30} />
+                <p>Loading photo...</p>
+              </div>
+            )}
+            {isError && (
+              <div className="agd__state">
+                <BrokenImageIcon sx={{ fontSize: 32 }} />
+                <p>Failed to load image.</p>
+              </div>
+            )}
+            <img
+              key={current.url}
+              src={current.url}
+              alt={current.name ?? `Photo ${index + 1}`}
+              className="agd__image"
+              style={{ display: isLoading || isError ? "none" : "block" }}
+              onLoad={() => setIsLoading(false)}
+              onError={() => {
+                setIsLoading(false);
+                setIsError(true);
+              }}
+            />
+          </div>
         )}
       </DialogContent>
 

@@ -111,7 +111,7 @@
     position: absolute;
     top: -9px;
     left: 12px;
-    background: #fff;
+    background: $bg-main;
     padding: 0 4px;
     font-size: 0.68rem;
     font-weight: 400;
@@ -142,7 +142,7 @@
     align-items: center;
     border: 1.5px solid $border-color;
     border-radius: 8px;
-    background: #fff;
+    background: $bg-main;
     padding: 0 12px;
     transition: border-color 0.2s;
 
@@ -320,7 +320,7 @@
     position: relative;
     border: 1.5px solid $border-color;
     border-radius: 8px;
-    background: #fff;
+    background: $bg-main;
     transition: border-color 0.2s;
 
     [data-theme="dark"] & {

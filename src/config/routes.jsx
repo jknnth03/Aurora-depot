@@ -9,10 +9,10 @@ import AreaChecklists from "../pages/area-checklists/AreaChecklists.jsx";
 import Users from "../pages/usermanagement/users/Users.jsx";
 import Roles from "../pages/usermanagement/roles/Roles.jsx";
 import Permissions from "../pages/usermanagement/permissions/Permissions.jsx";
+import OneUser from "../pages/usermanagement/one-user/OneUser.jsx";
 import ScoreGrading from "../pages/score-grading/ScoreGrading.jsx";
 import ChecklistType from "../pages/checklist-type/ChecklistType.jsx";
 import OneCharging from "../pages/one-rdf/one-charging/OneCharging.jsx";
-import OneUser from "../pages/one-rdf/one-user/OneUser.jsx";
 import QAChecklist from "../pages/qa-checklist/QAChecklist.jsx";
 import QADashboard from "../pages/qa-dashboard/QADashboard.jsx";
 import GracePeriodSetting from "../pages/grade-period/GracePeriodSetting.jsx";
@@ -45,6 +45,14 @@ export const ROUTES = [
         element: <Users />,
         handle: {
           permission: MODULES.USERMANAGEMENT.children.USERS.permissionId,
+        },
+      },
+      {
+        id: "USERMANAGEMENT.ONEUSER",
+        path: `${MODULES.USERMANAGEMENT.path}/${MODULES.USERMANAGEMENT.children.ONEUSER.path}`,
+        element: <OneUser />,
+        handle: {
+          permission: MODULES.USERMANAGEMENT.children.ONEUSER.permissionId,
         },
       },
       {
@@ -136,14 +144,6 @@ export const ROUTES = [
         element: <OneCharging />,
         handle: {
           permission: MODULES.ONERDF.children.ONECHARGING.permissionId,
-        },
-      },
-      {
-        id: "ONERDF.ONEUSER",
-        path: `${MODULES.ONERDF.path}/${MODULES.ONERDF.children.ONEUSER.path}`,
-        element: <OneUser />,
-        handle: {
-          permission: MODULES.ONERDF.children.ONEUSER.permissionId,
         },
       },
 

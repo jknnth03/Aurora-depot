@@ -34,6 +34,7 @@ const Permissions = () => {
   const search = queryParams.search ?? "";
   const debouncedSearch = useDebounce(search, 500);
   const [modalOpen, setModalOpen] = useState(false);
+  const [selectedRow, setSelectedRow] = useState(null);
 
   const { data, isFetching, error } = useGetPermissionsQuery({
     search: debouncedSearch,
@@ -61,10 +62,16 @@ const Permissions = () => {
   };
 
   const handleAdd = () => {
+    setSelectedRow(null);
+    setModalOpen(true);
+  };
+  const handleRowClick = (row) => {
+    setSelectedRow(row);
     setModalOpen(true);
   };
   const handleClose = () => {
     setModalOpen(false);
+    setSelectedRow(null);
   };
 
   return (
@@ -104,10 +111,15 @@ const Permissions = () => {
           sortBy={sortBy}
           sortOrder={sortOrder}
           onSort={handleSort}
+          onRowClick={handleRowClick}
         />
       </PageContainer>
 
-      <PermissionsModal open={modalOpen} onClose={handleClose} />
+      <PermissionsModal
+        open={modalOpen}
+        onClose={handleClose}
+        selectedRow={selectedRow}
+      />
     </>
   );
 };

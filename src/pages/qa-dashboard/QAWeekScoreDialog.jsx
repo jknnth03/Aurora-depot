@@ -193,7 +193,7 @@ const QAWeekScoreDialog = ({ open, onClose, weeklyRecord, checklistId }) => {
       await signWeeklyRecord({
         id: resolvedChecklistId,
         recordId: weeklyRecord.id,
-        body: { signature_refused: true },
+        body: { refused: true },
       }).unwrap();
       setLocalSignature({
         signature_url: null,

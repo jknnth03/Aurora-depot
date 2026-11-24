@@ -78,6 +78,14 @@ const extendedApi = apiSlice.injectEndpoints({
             ]
           : [{ type: "OneCharging", id: "LIST" }],
     }),
+
+    getSedarEmployees: builder.query({
+      query: ({ search, page, per_page } = {}) => ({
+        url: "sedar-employees",
+        method: "GET",
+        params: { search, page, per_page },
+      }),
+    }),
   }),
 });
 
@@ -89,4 +97,5 @@ export const {
   useGetUserQuery,
   useSyncOneChargingMutation,
   useGetOneChargingsQuery,
+  useGetSedarEmployeesQuery,
 } = extendedApi;

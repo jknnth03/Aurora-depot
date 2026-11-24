@@ -238,7 +238,7 @@ const UnitsModal = ({ open, onClose, selectedId = null }) => {
       disableEscapeKeyDown
       maxWidth="sm"
       fullWidth
-      PaperProps={{ className: "um__paper" }}>
+      slotProps={{ paper: { className: "um__paper" } }}>
       <div className="um__header">
         <div className="um__header-title">
           {headerIcon[mode]}
