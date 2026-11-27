@@ -10,6 +10,10 @@ import PeopleAltIcon from "@mui/icons-material/PeopleAlt";
 import EditIcon from "@mui/icons-material/Edit";
 import RemoveRedEyeIcon from "@mui/icons-material/RemoveRedEye";
 import ReportProblemIcon from "@mui/icons-material/ReportProblem";
+import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
+import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
+import FolderSpecialIcon from "@mui/icons-material/FolderSpecial";
+import WidgetsIcon from "@mui/icons-material/Widgets";
 import {
   SaveButton,
   EditButton,
@@ -22,6 +26,7 @@ import {
 } from "../../../features/api/usersmanagement/rolesApi";
 import { useGetPermissionsQuery } from "../../../features/api/usersmanagement/permissionsApi";
 import ConfirmDialog from "../../../reusable-components/confirm-dialog/ConfirmDialog";
+import { MODULES, iconStyles } from "../../../config/modules";
 import "./RolesModal.scss";
 
 const PERMISSIONS_KEY = "permissions";
@@ -52,37 +57,76 @@ const buildPayload = (form) => ({
 const formatLabel = (str) =>
   (str ?? "").replace(/[-_]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
-const MODULES_GROUP_LABEL = "Modules";
+const buildPermissionTree = (permissions) => {
+  const available = new Set(normalizePermissions(permissions));
+  if (available.size === 0) return [];
 
-const buildPermissionGroups = (permissions) => {
-  const map = {};
-  (permissions ?? []).forEach((perm) => {
-    const name = typeof perm === "string" ? perm : perm?.name;
-    if (!name) return;
+  const used = new Set();
+  const tree = [];
 
-    if (name.includes(".")) {
-      const [moduleKey, ...actionParts] = name.split(".");
-      const moduleLabel = formatLabel(moduleKey);
-      const actionLabel = formatLabel(actionParts.join(" "));
-      if (!map[moduleLabel]) map[moduleLabel] = [];
-      map[moduleLabel].push({ value: name, label: actionLabel });
-      return;
-    }
+  Object.values(MODULES).forEach((mod) => {
+    const children = mod.children
+      ? Object.values(mod.children)
+          .filter((c) => c.permissionKey && available.has(c.permissionKey))
+          .map((c) => ({
+            id: c.permissionId,
+            value: c.permissionKey,
+            label: c.name,
+            icon: c.icon,
+          }))
+      : [];
 
-    const label = formatLabel(
-      typeof perm === "string" ? name : perm?.group || name,
-    );
-    if (!map[MODULES_GROUP_LABEL]) map[MODULES_GROUP_LABEL] = [];
-    map[MODULES_GROUP_LABEL].push({ value: name, label });
+    const self =
+      mod.permissionKey && available.has(mod.permissionKey)
+        ? mod.permissionKey
+        : null;
+
+    if (!self && children.length === 0) return;
+
+    if (self) used.add(self);
+    children.forEach((c) => used.add(c.value));
+
+    tree.push({
+      key: mod.permissionId,
+      label: mod.name,
+      icon: mod.icon,
+      self,
+      children,
+    });
   });
-  return Object.entries(map).map(([module, perms]) => ({
-    module,
-    permissions: perms,
-  }));
+
+  const others = Array.from(available)
+    .filter((name) => !used.has(name))
+    .map((name) => ({
+      id: name,
+      value: name,
+      label: formatLabel(name),
+      icon: <WidgetsIcon sx={iconStyles.child} />,
+    }));
+
+  if (others.length > 0) {
+    tree.push({
+      key: "OTHERS",
+      label: "Others",
+      icon: <FolderSpecialIcon sx={iconStyles.main} />,
+      self: null,
+      children: others,
+    });
+  }
+
+  return tree;
 };
 
-const getAllPermissionValues = (groups) =>
-  (groups ?? []).flatMap((group) => group.permissions.map((p) => p.value));
+const getNodeValues = (node) =>
+  Array.from(
+    new Set([
+      ...(node.self ? [node.self] : []),
+      ...node.children.map((c) => c.value),
+    ]),
+  );
+
+const getAllPermissionValues = (tree) =>
+  Array.from(new Set((tree ?? []).flatMap((node) => getNodeValues(node))));
 
 const SkeletonLoader = () => (
   <div className="rm__skeleton-wrap">
@@ -104,30 +148,55 @@ const SkeletonLoader = () => (
   </div>
 );
 
+const Checkbox = ({ checked, indeterminate }) => (
+  <span
+    className={`rm__ac-checkbox${checked ? " rm__ac-checkbox--checked" : ""}${
+      indeterminate ? " rm__ac-checkbox--indeterminate" : ""
+    }`}
+  />
+);
+
 const PermissionsChecklist = ({
-  groups,
+  tree,
   value = [],
   onChange,
   error,
   readOnly = false,
   isLoading = false,
 }) => {
-  const allValues = useMemo(() => getAllPermissionValues(groups), [groups]);
+  const [expanded, setExpanded] = useState({});
+
+  const allValues = useMemo(() => getAllPermissionValues(tree), [tree]);
 
   const isAllSelected =
     allValues.length > 0 && allValues.every((v) => value.includes(v));
   const isIndeterminate =
     !isAllSelected && allValues.some((v) => value.includes(v));
 
-  const handleToggle = (perm) => {
+  const handleToggleAll = () => {
+    if (readOnly) return;
+    onChange(isAllSelected ? [] : allValues);
+  };
+
+  const handleToggleValue = (perm) => {
     if (readOnly) return;
     const already = value.includes(perm);
     onChange(already ? value.filter((v) => v !== perm) : [...value, perm]);
   };
 
-  const handleToggleAll = () => {
+  const handleToggleNode = (node) => {
     if (readOnly) return;
-    onChange(isAllSelected ? [] : allValues);
+    const nodeValues = getNodeValues(node);
+    const allChecked = nodeValues.every((v) => value.includes(v));
+    if (allChecked) {
+      onChange(value.filter((v) => !nodeValues.includes(v)));
+    } else {
+      onChange([...new Set([...value, ...nodeValues])]);
+    }
+  };
+
+  const handleToggleExpand = (key) => {
+    setExpanded((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
   if (isLoading) {
@@ -138,7 +207,7 @@ const PermissionsChecklist = ({
     );
   }
 
-  if (!groups || groups.length === 0) {
+  if (!tree || tree.length === 0) {
     return (
       <div className="rm__perm-wrap">
         <p className="rm__perm-empty">No permissions available.</p>
@@ -148,67 +217,83 @@ const PermissionsChecklist = ({
 
   return (
     <div className={`rm__perm-wrap${error ? " rm__perm-wrap--error" : ""}`}>
-      <div
-        className={`rm__perm-select-all${readOnly ? " rm__perm-select-all--readonly" : ""}`}
-        onClick={handleToggleAll}>
-        <span
-          className={`rm__ac-checkbox${
-            isAllSelected ? " rm__ac-checkbox--checked" : ""
-          }${isIndeterminate ? " rm__ac-checkbox--indeterminate" : ""}`}
-        />
-        Select All
-      </div>
-      {groups.map((group) => {
-        const groupValues = group.permissions.map((p) => p.value);
-        const isGroupAllSelected =
-          groupValues.length > 0 && groupValues.every((v) => value.includes(v));
-        const isGroupIndeterminate =
-          !isGroupAllSelected && groupValues.some((v) => value.includes(v));
+      <span className="rm__perm-legend">
+        Permissions
+        <span className="rm__required">*</span>
+      </span>
 
-        const handleToggleGroup = () => {
-          if (readOnly) return;
-          if (isGroupAllSelected) {
-            onChange(value.filter((v) => !groupValues.includes(v)));
-          } else {
-            onChange([...new Set([...value, ...groupValues])]);
-          }
-        };
+      <div
+        className={`rm__perm-row rm__perm-row--all${
+          readOnly ? " rm__perm-row--readonly" : ""
+        }`}
+        onClick={handleToggleAll}>
+        <Checkbox checked={isAllSelected} indeterminate={isIndeterminate} />
+        <span className="rm__perm-all-label">Select All</span>
+      </div>
+
+      {tree.map((node) => {
+        const nodeValues = getNodeValues(node);
+        const isNodeAllSelected =
+          nodeValues.length > 0 && nodeValues.every((v) => value.includes(v));
+        const isNodeIndeterminate =
+          !isNodeAllSelected && nodeValues.some((v) => value.includes(v));
+        const hasChildren = node.children.length > 0;
+        const isOpen = !!expanded[node.key];
 
         return (
-          <div key={group.module} className="rm__perm-group">
-            <div className="rm__perm-group-header">
-              <p className="rm__perm-group-label">{group.module}</p>
-              <div
-                className={`rm__perm-group-select-all${
-                  readOnly ? " rm__perm-group-select-all--readonly" : ""
-                }`}
-                onClick={handleToggleGroup}>
-                <span
-                  className={`rm__ac-checkbox${
-                    isGroupAllSelected ? " rm__ac-checkbox--checked" : ""
-                  }${isGroupIndeterminate ? " rm__ac-checkbox--indeterminate" : ""}`}
+          <div key={node.key} className="rm__perm-item">
+            <div
+              className={`rm__perm-row${
+                hasChildren ? " rm__perm-row--expandable" : ""
+              }${readOnly && !hasChildren ? " rm__perm-row--readonly" : ""}`}
+              onClick={() =>
+                hasChildren
+                  ? handleToggleExpand(node.key)
+                  : handleToggleNode(node)
+              }>
+              <span
+                className="rm__perm-check-hit"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleToggleNode(node);
+                }}>
+                <Checkbox
+                  checked={isNodeAllSelected}
+                  indeterminate={isNodeIndeterminate}
                 />
-                Select All
+              </span>
+              <span className="rm__perm-icon">{node.icon}</span>
+              <span className="rm__perm-label">{node.label}</span>
+              {hasChildren && (
+                <span className="rm__perm-chevron">
+                  {isOpen ? (
+                    <KeyboardArrowUpIcon fontSize="small" />
+                  ) : (
+                    <KeyboardArrowDownIcon fontSize="small" />
+                  )}
+                </span>
+              )}
+            </div>
+
+            {hasChildren && isOpen && (
+              <div className="rm__perm-children">
+                {node.children.map((child) => {
+                  const checked = value.includes(child.value);
+                  return (
+                    <div
+                      key={child.id}
+                      className={`rm__perm-chip${
+                        checked ? " rm__perm-chip--selected" : ""
+                      }${readOnly ? " rm__perm-chip--readonly" : ""}`}
+                      onClick={() => handleToggleValue(child.value)}>
+                      <Checkbox checked={checked} />
+                      <span className="rm__perm-chip-icon">{child.icon}</span>
+                      <span>{child.label}</span>
+                    </div>
+                  );
+                })}
               </div>
-            </div>
-            <div className="rm__perm-options">
-              {group.permissions.map((perm) => {
-                const checked = value.includes(perm.value);
-                return (
-                  <div
-                    key={perm.value}
-                    className={`rm__perm-option${checked ? " rm__perm-option--selected" : ""}${
-                      readOnly ? " rm__perm-option--readonly" : ""
-                    }`}
-                    onClick={() => handleToggle(perm.value)}>
-                    <span
-                      className={`rm__ac-checkbox${checked ? " rm__ac-checkbox--checked" : ""}`}
-                    />
-                    {perm.label}
-                  </div>
-                );
-              })}
-            </div>
+            )}
           </div>
         );
       })}
@@ -239,8 +324,8 @@ const RolesModal = ({ open, onClose, selectedId = null }) => {
     [permissionsData],
   );
 
-  const permissionGroups = useMemo(
-    () => buildPermissionGroups(allPermissions),
+  const permissionTree = useMemo(
+    () => buildPermissionTree(allPermissions),
     [allPermissions],
   );
 
@@ -401,7 +486,7 @@ const RolesModal = ({ open, onClose, selectedId = null }) => {
             <div className="rm__group">
               <p className="rm__group-label">Permissions</p>
               <PermissionsChecklist
-                groups={permissionGroups}
+                tree={permissionTree}
                 value={getRolePermissions(selectedRow)}
                 readOnly
                 isLoading={permissionsLoading}
@@ -462,7 +547,7 @@ const RolesModal = ({ open, onClose, selectedId = null }) => {
                 control={control}
                 render={({ field }) => (
                   <PermissionsChecklist
-                    groups={permissionGroups}
+                    tree={permissionTree}
                     value={field.value}
                     onChange={field.onChange}
                     error={!!errors.permissions}

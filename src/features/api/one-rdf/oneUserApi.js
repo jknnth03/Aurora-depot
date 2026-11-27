@@ -15,11 +15,12 @@ const extendedApi = apiSlice.injectEndpoints({
     }),
 
     getOneUsers: builder.query({
-      query: ({ status, sorts, search, page, per_page } = {}) => ({
+      // added `syncing` (synced | unsynced) so it is actually sent to the API
+      query: ({ status, syncing, sorts, search, page, per_page } = {}) => ({
         url: "one-rdf/users",
         method: "GET",
         headers: { api_key: ONE_RDF_API_KEY },
-        params: { status, sorts, search, page, per_page },
+        params: { status, syncing, sorts, search, page, per_page },
       }),
       providesTags: (result) =>
         result?.data?.data

@@ -45,6 +45,14 @@ const API_ORIGIN = (() => {
   }
 })();
 
+const CATEGORY_ORDER = ["sanitation", "structural", "equipment"];
+
+const CATEGORY_LABELS = {
+  sanitation: "Sanitation",
+  structural: "Structural",
+  equipment: "Equipment",
+};
+
 const fixAttachmentUrl = (rawUrl) => {
   if (!rawUrl) return rawUrl;
   try {
@@ -132,34 +140,118 @@ const buildValidationSchema = (scoreGradingOptions) => {
     );
 };
 
-const flattenSections = (sections = []) => {
+const getQuestionCategories = (question) => {
+  const categories = [];
+  if (question?.is_sanitation) categories.push("sanitation");
+  if (question?.is_structural) categories.push("structural");
+  if (question?.is_equipment) categories.push("equipment");
+  if (categories.length > 0) return categories;
+
+  if (question?.sanitation_percentage != null) categories.push("sanitation");
+  if (question?.structural_percentage != null) categories.push("structural");
+  if (question?.equipment_percentage != null) categories.push("equipment");
+  if (categories.length > 0) return categories;
+
+  return [question?.category ?? null];
+};
+
+const flattenItems = (sections = []) => {
   const flat = [];
   sections.forEach((section) => {
     (section.questions ?? []).forEach((question) => {
-      flat.push({ section, question });
+      getQuestionCategories(question).forEach((category) => {
+        flat.push({ section, question, category });
+      });
     });
   });
   return flat;
 };
 
-const buildSectionIndexMap = (flattened) => {
-  const map = {};
-  flattened.forEach(({ section }, index) => {
-    if (!map[section.id]) map[section.id] = [];
-    map[section.id].push(index);
-  });
-  return map;
+const categorySortValue = (category) => {
+  const idx = CATEGORY_ORDER.indexOf(category);
+  return idx === -1 ? CATEGORY_ORDER.length : idx;
 };
 
-const extractQuestionAnswer = (question) => {
-  if (question?.answer) return question.answer;
+const buildSteps = (flattened, sections) => {
+  const byCategory = new Map();
 
-  const answers = question?.answers;
-  if (!answers) return null;
+  flattened.forEach((item, index) => {
+    const key = item.category ?? "";
+    if (!byCategory.has(key)) {
+      byCategory.set(key, { category: item.category, indices: [] });
+    }
+    byCategory.get(key).indices.push(index);
+  });
 
-  if (answers.score_grading_id !== undefined) return answers;
+  return Array.from(byCategory.values())
+    .sort(
+      (a, b) => categorySortValue(a.category) - categorySortValue(b.category),
+    )
+    .map(({ category, indices }) => {
+      const groups = sections
+        .map((section) => ({
+          section,
+          indices: indices.filter(
+            (index) => flattened[index].section.id === section.id,
+          ),
+        }))
+        .filter((group) => group.indices.length > 0);
 
-  return answers.sanitation ?? answers.structural ?? answers.equipment ?? null;
+      return {
+        key: category ?? "general",
+        category,
+        indices,
+        groups,
+      };
+    });
+};
+
+const getStepLabel = (step) => {
+  if (!step) return "";
+  if (step.category) {
+    return CATEGORY_LABELS[step.category] ?? String(step.category);
+  }
+  return "General";
+};
+
+const getQuestionWeight = (question, category) => {
+  const weight = category
+    ? question?.[`${category}_percentage`]
+    : (question?.sanitation_percentage ??
+      question?.structural_percentage ??
+      question?.equipment_percentage);
+  return Number(weight) || 0;
+};
+
+const pickAnswerForCategory = (recordQuestion, category, categories) => {
+  if (!recordQuestion) return null;
+
+  const grouped = recordQuestion.answers;
+
+  if (Array.isArray(grouped)) {
+    if (category) {
+      return grouped.find((entry) => entry?.category === category) ?? null;
+    }
+    return grouped[0] ?? null;
+  }
+
+  const groupedIsMap = !!grouped && grouped.score_grading_id === undefined;
+
+  if (groupedIsMap) {
+    if (category) return grouped[category] ?? null;
+    return (
+      grouped.sanitation ?? grouped.structural ?? grouped.equipment ?? null
+    );
+  }
+
+  const single = recordQuestion.answer ?? grouped ?? null;
+  if (!single) return null;
+
+  const singleCategory = single.category ?? categories[0] ?? null;
+  if (!category || !singleCategory || singleCategory === category) {
+    return single;
+  }
+  return null;
 };
 
 const parseAttachmentList = (value) => {
@@ -211,24 +303,21 @@ const extractAttachmentsFromAnswer = (answer) => {
   return [];
 };
 
-const buildAnswerMapFromRecord = (weeklyRecordData) => {
+const buildRecordQuestionMap = (weeklyRecordData) => {
   const record = weeklyRecordData?.data ?? weeklyRecordData;
-  const answerMap = {};
+  const questionMap = {};
   (record?.sections ?? []).forEach((section) => {
     (section.questions ?? []).forEach((question) => {
-      const answer = extractQuestionAnswer(question);
-      if (answer) {
-        answerMap[question.id] = answer;
-      }
+      questionMap[question.id] = question;
     });
   });
-  return { record, answerMap };
+  return { record, questionMap };
 };
 
-const buildDefaultValues = (flattenedQuestions, weeklyRecordData) => {
+const buildDefaultValues = (flattenedItems, weeklyRecordData) => {
   if (!weeklyRecordData) {
     return {
-      answers: flattenedQuestions.map(({ question }) => ({
+      answers: flattenedItems.map(({ question }) => ({
         checklist_question_id: question.id,
         score_grading_id: "",
         remarks: "",
@@ -238,11 +327,15 @@ const buildDefaultValues = (flattenedQuestions, weeklyRecordData) => {
     };
   }
 
-  const { record, answerMap } = buildAnswerMapFromRecord(weeklyRecordData);
+  const { record, questionMap } = buildRecordQuestionMap(weeklyRecordData);
 
   return {
-    answers: flattenedQuestions.map(({ question }) => {
-      const answer = answerMap[question.id];
+    answers: flattenedItems.map(({ question, category }) => {
+      const answer = pickAnswerForCategory(
+        questionMap[question.id],
+        category,
+        getQuestionCategories(question),
+      );
       return {
         checklist_question_id: question.id,
         score_grading_id: answer?.score_grading_id
@@ -259,25 +352,22 @@ const buildDefaultValues = (flattenedQuestions, weeklyRecordData) => {
   };
 };
 
-const buildAttachmentUrlMap = (flattenedQuestions, weeklyRecordData) => {
+const buildAttachmentUrlMap = (flattenedItems, weeklyRecordData) => {
   if (!weeklyRecordData) return {};
-  const { answerMap } = buildAnswerMapFromRecord(weeklyRecordData);
+  const { questionMap } = buildRecordQuestionMap(weeklyRecordData);
   const urlMap = {};
-  flattenedQuestions.forEach(({ question }, index) => {
-    const answer = answerMap[question.id];
+  flattenedItems.forEach(({ question, category }, index) => {
+    const answer = pickAnswerForCategory(
+      questionMap[question.id],
+      category,
+      getQuestionCategories(question),
+    );
     const attachments = extractAttachmentsFromAnswer(answer);
     if (attachments.length) {
       urlMap[index] = attachments;
     }
   });
   return urlMap;
-};
-
-const getQuestionCategory = (question) => {
-  if (question?.sanitation_percentage != null) return "sanitation";
-  if (question?.structural_percentage != null) return "structural";
-  if (question?.equipment_percentage != null) return "equipment";
-  return question?.category ?? null;
 };
 
 const PhotoCell = ({
@@ -449,8 +539,8 @@ const QAAnswerForm = ({
   onSaved,
 }) => {
   const sections = checklistDetail?.checklist?.sections ?? [];
-  const flattenedQuestions = flattenSections(sections);
-  const sectionIndexMap = buildSectionIndexMap(flattenedQuestions);
+  const flattenedItems = flattenItems(sections);
+  const steps = buildSteps(flattenedItems, sections);
 
   const lowestScoreOption = scoreGradingOptions[0] ?? null;
 
@@ -501,7 +591,7 @@ const QAAnswerForm = ({
     formState: { errors },
   } = useForm({
     resolver: yupResolver(validationSchema),
-    defaultValues: buildDefaultValues(flattenedQuestions, weeklyRecordData),
+    defaultValues: buildDefaultValues(flattenedItems, weeklyRecordData),
   });
 
   const watchedAnswers = watch("answers");
@@ -513,14 +603,14 @@ const QAAnswerForm = ({
 
   const [attachments, setAttachments] = useState({});
   const [attachmentUrls, setAttachmentUrls] = useState(() =>
-    buildAttachmentUrlMap(flattenedQuestions, weeklyRecordData),
+    buildAttachmentUrlMap(flattenedItems, weeklyRecordData),
   );
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pendingFormData, setPendingFormData] = useState(null);
   const [draftConfirmOpen, setDraftConfirmOpen] = useState(false);
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [activeAction, setActiveAction] = useState(null);
-  const [activeSectionIndex, setActiveSectionIndex] = useState(0);
+  const [activeStepIndex, setActiveStepIndex] = useState(0);
   const [autoFilledIndices, setAutoFilledIndices] = useState([]);
   const [attachmentErrors, setAttachmentErrors] = useState({});
   const [viewerAttachment, setViewerAttachment] = useState(null);
@@ -545,7 +635,10 @@ const QAAnswerForm = ({
         block: "center",
       });
     }
-  }, [errors, submitAttempted, activeSectionIndex]);
+  }, [errors, submitAttempted, activeStepIndex]);
+
+  const findStepIndexOfItem = (itemIndex) =>
+    steps.findIndex((step) => step.indices.includes(itemIndex));
 
   const handleAddAttachments = (index, files) => {
     if (!files || files.length === 0) return;
@@ -571,7 +664,7 @@ const QAAnswerForm = ({
 
   const validateAttachments = () => {
     const nextErrors = {};
-    flattenedQuestions.forEach((_, index) => {
+    flattenedItems.forEach((_, index) => {
       const selectedId = watchedAnswers?.[index]?.score_grading_id;
       if (isMaxScoreSelected(selectedId)) return;
       const newCount = attachments[index]?.length ?? 0;
@@ -583,9 +676,8 @@ const QAAnswerForm = ({
     return nextErrors;
   };
 
-  const handleSetAllInSection = (section, optionId) => {
-    const indices = sectionIndexMap[section.id] ?? [];
-    indices.forEach((index) => {
+  const handleSetAllInStep = (step, optionId) => {
+    (step?.indices ?? []).forEach((index) => {
       setValue(`answers.${index}.score_grading_id`, String(optionId), {
         shouldValidate: submitAttempted,
         shouldDirty: true,
@@ -593,8 +685,8 @@ const QAAnswerForm = ({
     });
   };
 
-  const isAllSetTo = (section, optionId) => {
-    const indices = sectionIndexMap[section.id] ?? [];
+  const isAllSetTo = (step, optionId) => {
+    const indices = step?.indices ?? [];
     if (indices.length === 0) return false;
     return indices.every(
       (index) =>
@@ -603,17 +695,8 @@ const QAAnswerForm = ({
     );
   };
 
-  const getQuestionWeight = (question) => {
-    const weight =
-      question?.sanitation_percentage ??
-      question?.structural_percentage ??
-      question?.equipment_percentage ??
-      0;
-    return Number(weight) || 0;
-  };
-
-  const getSectionProgress = (section) => {
-    const indices = sectionIndexMap[section.id] ?? [];
+  const getStepProgress = (step) => {
+    const indices = step?.indices ?? [];
     const answered = indices.filter(
       (index) => !!watchedAnswers?.[index]?.score_grading_id,
     ).length;
@@ -622,8 +705,8 @@ const QAAnswerForm = ({
     let available = 0;
 
     indices.forEach((index) => {
-      const question = flattenedQuestions[index]?.question;
-      const weight = getQuestionWeight(question);
+      const { question, category } = flattenedItems[index];
+      const weight = getQuestionWeight(question, category);
       available += weight;
 
       const optionId = watchedAnswers?.[index]?.score_grading_id;
@@ -645,7 +728,7 @@ const QAAnswerForm = ({
 
     if (value === "yes") {
       const filledIndices = [];
-      flattenedQuestions.forEach((_, index) => {
+      flattenedItems.forEach((_, index) => {
         const current = getValues(`answers.${index}.score_grading_id`);
         if (!current) {
           setValue(
@@ -671,42 +754,47 @@ const QAAnswerForm = ({
     }
   };
 
-  const buildAnswersFormData = (answers, others, status) => {
+  const buildAnswersFormData = (answers, others, isDraft) => {
     const formData = new FormData();
     const timeIn = timeInRef.current;
     const timeOut = dayjs();
-    const isDraft = status === "in_progress";
+    let position = 0;
 
-    answers.forEach((answer, index) => {
-      const question = flattenedQuestions[index]?.question;
+    (answers ?? []).forEach((answer, index) => {
+      if (!answer?.score_grading_id) return;
+
+      const item = flattenedItems[index];
+      const prefix = `answers[${position}]`;
+
       formData.append(
-        `answers[${index}][checklist_question_id]`,
+        `${prefix}[checklist_question_id]`,
         answer.checklist_question_id,
       );
-      formData.append(
-        `answers[${index}][category]`,
-        getQuestionCategory(question) ?? "",
-      );
-      formData.append(
-        `answers[${index}][score_grading_id]`,
-        answer.score_grading_id ?? "",
-      );
-      formData.append(`answers[${index}][remarks]`, answer.remarks ?? "");
+      formData.append(`${prefix}[category]`, item?.category ?? "");
+      formData.append(`${prefix}[score_grading_id]`, answer.score_grading_id);
+
+      const remarks = String(answer.remarks ?? "").trim();
+      if (remarks) {
+        formData.append(`${prefix}[remarks]`, remarks);
+      }
+
       (attachments[index] ?? []).forEach((file) => {
-        formData.append(`answers[${index}][attachments][]`, file);
+        formData.append(`${prefix}[attachments][]`, file);
       });
+
+      position += 1;
     });
-    formData.append("good_points", others?.good_points ?? "");
-    formData.append("note", others?.notes ?? "");
+
+    formData.append("good_points", String(others?.good_points ?? "").trim());
+    formData.append("note", String(others?.notes ?? "").trim());
     formData.append("time_in", timeIn.format("HH:mm"));
     formData.append("time_in_date", timeIn.format("YYYY-MM-DD"));
     formData.append("time_out", timeOut.format("HH:mm"));
     formData.append("time_out_date", timeOut.format("YYYY-MM-DD"));
-    formData.append("status", status);
-    formData.append("is_draft", isDraft ? "1" : "0");
     formData.append("week", week);
     formData.append("month", month ?? dayjs().month() + 1);
     formData.append("year", year ?? dayjs().year());
+    formData.append("is_draft", isDraft ? "1" : "0");
     return formData;
   };
 
@@ -716,11 +804,8 @@ const QAAnswerForm = ({
     setAttachmentErrors(nextAttachmentErrors);
     if (Object.keys(nextAttachmentErrors).length > 0) {
       const firstErrorIndex = Number(Object.keys(nextAttachmentErrors)[0]);
-      const sectionId = flattenedQuestions[firstErrorIndex]?.section?.id;
-      const sectionIdx = sections.findIndex(
-        (section) => section.id === sectionId,
-      );
-      if (sectionIdx > -1) setActiveSectionIndex(sectionIdx);
+      const stepIdx = findStepIndexOfItem(firstErrorIndex);
+      if (stepIdx > -1) setActiveStepIndex(stepIdx);
       return;
     }
     setPendingFormData(form);
@@ -737,11 +822,8 @@ const QAAnswerForm = ({
       if (attachmentIndices.length > 0) firstErrorIndex = attachmentIndices[0];
     }
     if (firstErrorIndex > -1) {
-      const sectionId = flattenedQuestions[firstErrorIndex]?.section?.id;
-      const sectionIdx = sections.findIndex(
-        (section) => section.id === sectionId,
-      );
-      if (sectionIdx > -1) setActiveSectionIndex(sectionIdx);
+      const stepIdx = findStepIndexOfItem(firstErrorIndex);
+      if (stepIdx > -1) setActiveStepIndex(stepIdx);
     }
   };
 
@@ -752,7 +834,7 @@ const QAAnswerForm = ({
       const body = buildAnswersFormData(
         pendingFormData.answers,
         pendingFormData.others,
-        "completed",
+        false,
       );
       await answerChecklist({ id: checklistId, body }).unwrap();
       window.__snackbar__?.enqueueSnackbar(
@@ -798,7 +880,7 @@ const QAAnswerForm = ({
       const body = buildAnswersFormData(
         formValues.answers,
         formValues.others,
-        "in_progress",
+        true,
       );
       await answerChecklist({ id: checklistId, body }).unwrap();
       window.__snackbar__?.enqueueSnackbar("Draft saved.", {
@@ -850,9 +932,20 @@ const QAAnswerForm = ({
 
   const errorIndices = new Set();
   (errors?.answers ?? []).forEach((entry, idx) => {
-    if (entry) errorIndices.add(idx);
+    if (!entry) return;
+    const maxSelected = isMaxScoreSelected(
+      watchedAnswers?.[idx]?.score_grading_id,
+    );
+    if (entry.score_grading_id || (entry.remarks && !maxSelected)) {
+      errorIndices.add(idx);
+    }
   });
-  Object.keys(attachmentErrors).forEach((idx) => errorIndices.add(Number(idx)));
+  Object.keys(attachmentErrors).forEach((idx) => {
+    const maxSelected = isMaxScoreSelected(
+      watchedAnswers?.[Number(idx)]?.score_grading_id,
+    );
+    if (!maxSelected) errorIndices.add(Number(idx));
+  });
   const errorCount = errorIndices.size;
 
   let firstErrorSet = false;
@@ -865,10 +958,10 @@ const QAAnswerForm = ({
   };
 
   const isBusy = activeAction !== null || isRefusing;
-  const activeSection = sections[activeSectionIndex] ?? null;
-  const activeProgress = activeSection
-    ? getSectionProgress(activeSection)
-    : { answered: 0, total: 0, earned: 0, available: 0, score: null };
+  const activeStep = steps[activeStepIndex] ?? null;
+  const activeCategoryLabel = activeStep?.category
+    ? (CATEGORY_LABELS[activeStep.category] ?? String(activeStep.category))
+    : null;
 
   return (
     <>
@@ -877,19 +970,19 @@ const QAAnswerForm = ({
           onSubmit={handleSubmit(onValidSubmit, onInvalidSubmit)}
           className={`qam__form${viewOnly ? " qam__form--view" : ""}`}
           noValidate>
-          {sections.length > 0 && (
+          {steps.length > 0 && (
             <div className="qam__section-nav">
               <Button
                 type="button"
                 size="small"
                 className="qam__section-nav-next"
                 startIcon={<ChevronLeftIcon fontSize="small" />}
-                onClick={() => setActiveSectionIndex((i) => Math.max(i - 1, 0))}
-                disabled={activeSectionIndex === 0}>
+                onClick={() => setActiveStepIndex((i) => Math.max(i - 1, 0))}
+                disabled={activeStepIndex === 0}>
                 PREVIOUS
               </Button>
               <span className="qam__section-nav-label">
-                {activeSection?.name}
+                {getStepLabel(activeStep)}
               </span>
               <Button
                 type="button"
@@ -897,296 +990,333 @@ const QAAnswerForm = ({
                 className="qam__section-nav-next"
                 endIcon={<ChevronRightIcon fontSize="small" />}
                 onClick={() =>
-                  setActiveSectionIndex((i) =>
-                    Math.min(i + 1, sections.length - 1),
-                  )
+                  setActiveStepIndex((i) => Math.min(i + 1, steps.length - 1))
                 }
-                disabled={activeSectionIndex === sections.length - 1}>
+                disabled={activeStepIndex === steps.length - 1}>
                 Next
               </Button>
             </div>
           )}
 
-          {activeSection && (
-            <div className="qam__section" key={activeSection.id}>
-              <div className="qam__section-header">{activeSection.name}</div>
-              <div className="qam__table-scroll">
-                <table className="qam__grid-table">
-                  <thead>
-                    <tr className="qam__thead-row">
-                      <th className="qam__th qam__th--item">Item</th>
-                      <th className="qam__th qam__th--compliance">
-                        Score
-                        {!viewOnly && <span className="qam__required">*</span>}
-                      </th>
-                      <th className="qam__th qam__th--remarks">Remarks</th>
-                      <th className="qam__th qam__th--photo">Photo</th>
-                    </tr>
+          {activeStep &&
+            activeStep.groups.map((group, groupIdx) => {
+              const groupProgress = getStepProgress(group);
+              const showSetAll = !viewOnly && groupIdx === 0;
 
-                    {!viewOnly && (
-                      <tr className="qam__thead-row qam__thead-row--setall">
-                        <th className="qam__th qam__th--setall-label">
-                          <span className="qam__setall-label">
-                            <DoneAllIcon sx={{ fontSize: 14 }} />
-                            APPLY{" "}
-                            {lowestScoreOption
-                              ? getScoreLabel(lowestScoreOption)
-                              : ""}
-                            % TO REMAINING
-                          </span>
-                        </th>
-                        <th className="qam__th qam__th--compliance">
-                          <div className="qam__radio-group">
-                            <label
-                              className="qam__radio-option qam__radio-option--compact"
-                              style={{ "--dot-color": "#43a047" }}>
-                              <input
-                                type="radio"
-                                value="yes"
-                                {...register("applyDefaultAll", {
-                                  onChange: (e) =>
-                                    handleApplyDefaultToAll(e.target.value),
-                                })}
-                              />
-                              <span
-                                className={`qam__radio-dot qam__radio-dot--compact${
-                                  watchedApplyAll === "yes"
-                                    ? " qam__radio-dot--checked"
-                                    : ""
-                                }`}
-                              />
-                              <span>Yes</span>
-                            </label>
-                            <label
-                              className="qam__radio-option qam__radio-option--compact"
-                              style={{ "--dot-color": "#e53935" }}>
-                              <input
-                                type="radio"
-                                value="no"
-                                {...register("applyDefaultAll", {
-                                  onChange: (e) =>
-                                    handleApplyDefaultToAll(e.target.value),
-                                })}
-                              />
-                              <span
-                                className={`qam__radio-dot qam__radio-dot--compact${
-                                  watchedApplyAll === "no"
-                                    ? " qam__radio-dot--checked"
-                                    : ""
-                                }`}
-                              />
-                              <span>No</span>
-                            </label>
-                          </div>
-                        </th>
-                        <th
-                          className="qam__th qam__th--setall-note"
-                          colSpan={2}>
-                          Applies to unscored items in all categories
-                        </th>
-                      </tr>
-                    )}
+              return (
+                <div
+                  className="qam__section"
+                  key={`${activeStep.key}-${group.section.id}`}
+                  style={
+                    groupIdx < activeStep.groups.length - 1
+                      ? { marginBottom: 16 }
+                      : undefined
+                  }>
+                  <div className="qam__section-header">
+                    {group.section.name}
+                  </div>
+                  <div className="qam__table-scroll">
+                    <table className="qam__grid-table">
+                      <thead>
+                        <tr className="qam__thead-row">
+                          <th className="qam__th qam__th--item">Item</th>
+                          <th className="qam__th qam__th--compliance">
+                            Score
+                            {!viewOnly && (
+                              <span className="qam__required">*</span>
+                            )}
+                          </th>
+                          <th className="qam__th qam__th--remarks">Remarks</th>
+                          <th className="qam__th qam__th--photo">Photo</th>
+                        </tr>
 
-                    {!viewOnly && (
-                      <tr className="qam__thead-row qam__thead-row--setall">
-                        <th className="qam__th qam__th--setall-label">
-                          <span className="qam__setall-label">
-                            <DoneAllIcon sx={{ fontSize: 14 }} />
-                            SET ALL TO
-                          </span>
-                        </th>
-                        <th className="qam__th qam__th--compliance">
-                          <div className="qam__radio-group">
-                            {scoreGradingOptions.map((option) => {
-                              const color = getScoreColor(option);
-                              const active = isAllSetTo(
-                                activeSection,
-                                option.id,
-                              );
-                              return (
-                                <button
-                                  key={option.id}
-                                  type="button"
-                                  className={`qam__radio-option qam__radio-option--setall${
-                                    active ? " qam__radio-option--active" : ""
-                                  }`}
-                                  style={{
-                                    "--dot-color": color,
-                                    color: active ? color : undefined,
-                                  }}
-                                  onClick={() =>
-                                    handleSetAllInSection(
-                                      activeSection,
-                                      option.id,
-                                    )
-                                  }>
+                        {showSetAll && (
+                          <tr className="qam__thead-row qam__thead-row--setall">
+                            <th className="qam__th qam__th--setall-label">
+                              <span className="qam__setall-label">
+                                <DoneAllIcon sx={{ fontSize: 14 }} />
+                                APPLY{" "}
+                                {lowestScoreOption
+                                  ? getScoreLabel(lowestScoreOption)
+                                  : ""}
+                                % TO REMAINING
+                              </span>
+                            </th>
+                            <th className="qam__th qam__th--compliance">
+                              <div className="qam__radio-group">
+                                <label
+                                  className="qam__radio-option qam__radio-option--compact"
+                                  style={{ "--dot-color": "#43a047" }}>
+                                  <input
+                                    type="radio"
+                                    value="yes"
+                                    {...register("applyDefaultAll", {
+                                      onChange: (e) =>
+                                        handleApplyDefaultToAll(e.target.value),
+                                    })}
+                                  />
                                   <span
-                                    className={`qam__radio-dot${
-                                      active ? " qam__radio-dot--checked" : ""
+                                    className={`qam__radio-dot qam__radio-dot--compact${
+                                      watchedApplyAll === "yes"
+                                        ? " qam__radio-dot--checked"
+                                        : ""
                                     }`}
                                   />
-                                  <span>{getScoreLabel(option)}</span>
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </th>
-                        <th
-                          className="qam__th qam__th--setall-note"
-                          colSpan={2}>
-                          Applies to all items in this section
-                        </th>
-                      </tr>
-                    )}
-                  </thead>
-                  <tbody>
-                    {(activeSection.questions ?? []).map((question, qIdx) => {
-                      const index = sectionIndexMap[activeSection.id][qIdx];
-                      const questionErrors = errors?.answers?.[index];
-                      const scoreError =
-                        !viewOnly && !!questionErrors?.score_grading_id;
-                      const remarksError =
-                        !viewOnly && !!questionErrors?.remarks;
-                      const photoError = !viewOnly && attachmentErrors[index];
-                      const hasRowError =
-                        scoreError || remarksError || !!photoError;
-                      const selectedId =
-                        watchedAnswers?.[index]?.score_grading_id;
-                      const remarksRequired = !isMaxScoreSelected(selectedId);
+                                  <span>Yes</span>
+                                </label>
+                                <label
+                                  className="qam__radio-option qam__radio-option--compact"
+                                  style={{ "--dot-color": "#e53935" }}>
+                                  <input
+                                    type="radio"
+                                    value="no"
+                                    {...register("applyDefaultAll", {
+                                      onChange: (e) =>
+                                        handleApplyDefaultToAll(e.target.value),
+                                    })}
+                                  />
+                                  <span
+                                    className={`qam__radio-dot qam__radio-dot--compact${
+                                      watchedApplyAll === "no"
+                                        ? " qam__radio-dot--checked"
+                                        : ""
+                                    }`}
+                                  />
+                                  <span>No</span>
+                                </label>
+                              </div>
+                            </th>
+                            <th
+                              className="qam__th qam__th--setall-note"
+                              colSpan={2}>
+                              Applies to unscored items in all categories
+                            </th>
+                          </tr>
+                        )}
 
-                      return (
-                        <tr key={question.id} className="qam__tr">
-                          <td className="qam__td qam__td--item">
-                            <p className="qam__question-text">
-                              <span className="qam__item-number">
-                                {qIdx + 1}.
-                              </span>{" "}
-                              {question.name}
-                            </p>
-                          </td>
-
-                          <td
-                            ref={getFirstErrorRef(hasRowError)}
-                            className={`qam__td qam__td--compliance${
-                              scoreError ? " qam__td--error" : ""
-                            }`}>
-                            <div className="qam__radio-group">
-                              {scoreGradingOptions.map((option) => {
-                                const color = getScoreColor(option);
-                                const checked =
-                                  String(selectedId ?? "") ===
-                                  String(option.id);
-                                return (
-                                  <label
-                                    key={option.id}
-                                    className="qam__radio-option"
-                                    style={{
-                                      "--dot-color": color,
-                                      color: checked ? color : undefined,
-                                    }}>
-                                    <input
-                                      type="radio"
-                                      value={option.id}
-                                      disabled={viewOnly}
-                                      {...register(
-                                        `answers.${index}.score_grading_id`,
-                                      )}
-                                    />
-                                    <span
-                                      className={`qam__radio-dot${
-                                        checked
-                                          ? " qam__radio-dot--checked"
+                        {showSetAll && (
+                          <tr className="qam__thead-row qam__thead-row--setall">
+                            <th className="qam__th qam__th--setall-label">
+                              <span className="qam__setall-label">
+                                <DoneAllIcon sx={{ fontSize: 14 }} />
+                                SET ALL TO
+                              </span>
+                            </th>
+                            <th className="qam__th qam__th--compliance">
+                              <div className="qam__radio-group">
+                                {scoreGradingOptions.map((option) => {
+                                  const color = getScoreColor(option);
+                                  const active = isAllSetTo(
+                                    activeStep,
+                                    option.id,
+                                  );
+                                  return (
+                                    <button
+                                      key={option.id}
+                                      type="button"
+                                      className={`qam__radio-option qam__radio-option--setall${
+                                        active
+                                          ? " qam__radio-option--active"
                                           : ""
                                       }`}
-                                    />
-                                    <span>{getScoreLabel(option)}</span>
-                                  </label>
-                                );
-                              })}
-                            </div>
-                            {scoreError && (
-                              <span className="qam__inline-error">
-                                <ReportProblemIcon sx={{ fontSize: 10 }} />
-                                {questionErrors.score_grading_id.message}
-                              </span>
-                            )}
-                          </td>
+                                      style={{
+                                        "--dot-color": color,
+                                        color: active ? color : undefined,
+                                      }}
+                                      onClick={() =>
+                                        handleSetAllInStep(
+                                          activeStep,
+                                          option.id,
+                                        )
+                                      }>
+                                      <span
+                                        className={`qam__radio-dot${
+                                          active
+                                            ? " qam__radio-dot--checked"
+                                            : ""
+                                        }`}
+                                      />
+                                      <span>{getScoreLabel(option)}</span>
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </th>
+                            <th
+                              className="qam__th qam__th--setall-note"
+                              colSpan={2}>
+                              {activeCategoryLabel
+                                ? `Applies to all ${activeCategoryLabel} items in every section`
+                                : "Applies to all items in every section"}
+                            </th>
+                          </tr>
+                        )}
+                      </thead>
+                      <tbody>
+                        {group.indices.map((index) => {
+                          const { question } = flattenedItems[index];
+                          const questionNumber =
+                            (group.section.questions ?? []).findIndex(
+                              (q) => q.id === question.id,
+                            ) + 1;
+                          const questionErrors = errors?.answers?.[index];
+                          const selectedId =
+                            watchedAnswers?.[index]?.score_grading_id;
+                          const remarksRequired =
+                            !isMaxScoreSelected(selectedId);
+                          const scoreError =
+                            !viewOnly && !!questionErrors?.score_grading_id;
+                          const remarksError =
+                            !viewOnly &&
+                            remarksRequired &&
+                            !!questionErrors?.remarks;
+                          const photoError =
+                            !viewOnly &&
+                            remarksRequired &&
+                            attachmentErrors[index];
+                          const hasRowError =
+                            scoreError || remarksError || !!photoError;
 
-                          <td
-                            className={`qam__td qam__td--remarks${
-                              remarksError ? " qam__td--error" : ""
-                            }`}>
-                            {!viewOnly && remarksRequired && (
-                              <span className="qam__remarks-label">
-                                Remarks
-                                <span className="qam__required">*</span>
-                              </span>
-                            )}
-                            <textarea
-                              className="qam__textarea"
-                              rows={2}
-                              placeholder="Enter remarks"
-                              readOnly={viewOnly}
-                              {...register(`answers.${index}.remarks`)}
-                            />
-                            {remarksError && (
-                              <span className="qam__inline-error">
-                                <ReportProblemIcon sx={{ fontSize: 10 }} />
-                                {questionErrors.remarks.message}
-                              </span>
-                            )}
-                          </td>
+                          return (
+                            <tr
+                              key={`${question.id}-${activeStep.category ?? "general"}`}
+                              className="qam__tr">
+                              <td className="qam__td qam__td--item">
+                                <p className="qam__question-text">
+                                  <span className="qam__item-number">
+                                    {questionNumber}.
+                                  </span>{" "}
+                                  {question.name}
+                                </p>
+                              </td>
 
+                              <td
+                                ref={getFirstErrorRef(hasRowError)}
+                                className={`qam__td qam__td--compliance${
+                                  scoreError ? " qam__td--error" : ""
+                                }`}>
+                                <div className="qam__radio-group">
+                                  {scoreGradingOptions.map((option) => {
+                                    const color = getScoreColor(option);
+                                    const checked =
+                                      String(selectedId ?? "") ===
+                                      String(option.id);
+                                    return (
+                                      <label
+                                        key={option.id}
+                                        className="qam__radio-option"
+                                        style={{
+                                          "--dot-color": color,
+                                          color: checked ? color : undefined,
+                                        }}>
+                                        <input
+                                          type="radio"
+                                          value={option.id}
+                                          disabled={viewOnly}
+                                          {...register(
+                                            `answers.${index}.score_grading_id`,
+                                          )}
+                                        />
+                                        <span
+                                          className={`qam__radio-dot${
+                                            checked
+                                              ? " qam__radio-dot--checked"
+                                              : ""
+                                          }`}
+                                        />
+                                        <span>{getScoreLabel(option)}</span>
+                                      </label>
+                                    );
+                                  })}
+                                </div>
+                                {scoreError && (
+                                  <span className="qam__inline-error">
+                                    <ReportProblemIcon sx={{ fontSize: 10 }} />
+                                    {questionErrors.score_grading_id.message}
+                                  </span>
+                                )}
+                              </td>
+
+                              <td
+                                className={`qam__td qam__td--remarks${
+                                  remarksError ? " qam__td--error" : ""
+                                }`}>
+                                {!viewOnly && remarksRequired && (
+                                  <span className="qam__remarks-label">
+                                    Remarks
+                                    <span className="qam__required">*</span>
+                                  </span>
+                                )}
+                                <textarea
+                                  className="qam__textarea"
+                                  rows={2}
+                                  placeholder="Enter remarks"
+                                  readOnly={viewOnly}
+                                  {...register(`answers.${index}.remarks`)}
+                                />
+                                {remarksError && (
+                                  <span className="qam__inline-error">
+                                    <ReportProblemIcon sx={{ fontSize: 10 }} />
+                                    {questionErrors.remarks.message}
+                                  </span>
+                                )}
+                              </td>
+
+                              <td
+                                className={`qam__td qam__td--photo${
+                                  photoError ? " qam__td--error" : ""
+                                }`}>
+                                {!viewOnly && remarksRequired && (
+                                  <span className="qam__remarks-label">
+                                    Photo
+                                    <span className="qam__required">*</span>
+                                  </span>
+                                )}
+                                <PhotoCell
+                                  viewOnly={viewOnly}
+                                  existingAttachments={
+                                    attachmentUrls[index] ?? []
+                                  }
+                                  newFiles={attachments[index] ?? []}
+                                  onAddFiles={(files) =>
+                                    handleAddAttachments(index, files)
+                                  }
+                                  onRemoveNewFile={(fileIdx) =>
+                                    handleRemoveAttachment(index, fileIdx)
+                                  }
+                                  onView={setViewerAttachment}
+                                />
+                                {photoError && (
+                                  <span className="qam__inline-error">
+                                    <ReportProblemIcon sx={{ fontSize: 10 }} />
+                                    {photoError}
+                                  </span>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                      <tfoot>
+                        <tr className="qam__tfoot-row">
+                          <td className="qam__td qam__td--total" colSpan={2}>
+                            Total Item - {groupProgress.answered}/
+                            {groupProgress.total}
+                          </td>
                           <td
-                            className={`qam__td qam__td--photo${
-                              photoError ? " qam__td--error" : ""
-                            }`}>
-                            {!viewOnly && remarksRequired && (
-                              <span className="qam__remarks-label">
-                                Photo
-                                <span className="qam__required">*</span>
-                              </span>
-                            )}
-                            <PhotoCell
-                              viewOnly={viewOnly}
-                              existingAttachments={attachmentUrls[index] ?? []}
-                              newFiles={attachments[index] ?? []}
-                              onAddFiles={(files) =>
-                                handleAddAttachments(index, files)
-                              }
-                              onRemoveNewFile={(fileIdx) =>
-                                handleRemoveAttachment(index, fileIdx)
-                              }
-                              onView={setViewerAttachment}
-                            />
-                            {photoError && (
-                              <span className="qam__inline-error">
-                                <ReportProblemIcon sx={{ fontSize: 10 }} />
-                                {photoError}
-                              </span>
-                            )}
+                            className="qam__td qam__td--total-score"
+                            colSpan={2}>
+                            {groupProgress.score !== null
+                              ? `${groupProgress.score.toFixed(2)}%`
+                              : "-"}
                           </td>
                         </tr>
-                      );
-                    })}
-                  </tbody>
-                  <tfoot>
-                    <tr className="qam__tfoot-row">
-                      <td className="qam__td qam__td--total" colSpan={2}>
-                        Total Item - {activeProgress.answered}/
-                        {activeProgress.total}
-                      </td>
-                      <td className="qam__td qam__td--total-score" colSpan={2}>
-                        {activeProgress.score !== null
-                          ? `${activeProgress.score.toFixed(2)}%`
-                          : "-"}
-                      </td>
-                    </tr>
-                  </tfoot>
-                </table>
-              </div>
-            </div>
-          )}
+                      </tfoot>
+                    </table>
+                  </div>
+                </div>
+              );
+            })}
 
           <div className="qam__others">
             <div className="qam__others-header">Others</div>

@@ -396,12 +396,12 @@
   }
 
   &__perm-wrap {
+    position: relative;
     display: flex;
     flex-direction: column;
-    gap: 14px;
+    margin-top: 4px;
     border: 1.5px solid $border-color;
     border-radius: 8px;
-    padding: 12px;
 
     [data-theme="dark"] & {
       border-color: rgba(255, 255, 255, 0.12);
@@ -412,52 +412,82 @@
     }
   }
 
-  &__perm-select-all {
-    display: inline-flex;
+  &__perm-legend {
+    position: absolute;
+    top: -9px;
+    left: 12px;
+    z-index: 1;
+    display: flex;
     align-items: center;
-    gap: 6px;
-    align-self: flex-start;
-    font-size: 0.76rem;
-    font-weight: 600;
-    color: $primary-main;
+    gap: 3px;
+    padding: 0 4px;
+    font-size: 0.68rem;
+    font-weight: 400;
+    color: $text-muted;
+    background: $bg-main;
     font-family: "Poppins", sans-serif;
-    cursor: pointer;
-    padding-bottom: 10px;
-    margin-bottom: 4px;
-    border-bottom: 1px solid $border-color;
-    width: 100%;
 
     [data-theme="dark"] & {
-      color: $secondary-main;
-      border-color: rgba(255, 255, 255, 0.12);
+      background: $bg-main;
+      color: rgba(255, 255, 255, 0.4);
+    }
+  }
+
+  &__perm-empty {
+    margin: 0;
+    padding: 16px;
+    text-align: center;
+    font-size: 0.76rem;
+    color: $text-muted;
+    font-family: "Poppins", sans-serif;
+  }
+
+  &__perm-item {
+    border-top: 1px solid $border-color;
+
+    [data-theme="dark"] & {
+      border-color: rgba(255, 255, 255, 0.08);
+    }
+  }
+
+  &__perm-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 46px;
+    padding: 0 14px;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.15s;
+
+    &:hover {
+      background: rgba($primary-main, 0.04);
+
+      [data-theme="dark"] & {
+        background: rgba(255, 255, 255, 0.03);
+      }
+    }
+
+    &--all {
+      min-height: 48px;
+      border-radius: 8px 8px 0 0;
     }
 
     &--readonly {
       cursor: default;
-      pointer-events: none;
+
+      &:hover {
+        background: transparent;
+      }
     }
   }
 
-  &__perm-group {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  &__perm-group-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-  }
-
-  &__perm-group-label {
-    font-size: 0.7rem;
-    font-weight: 600;
-    color: $primary-main;
-    text-transform: uppercase;
+  &__perm-all-label {
+    font-size: 0.76rem;
+    font-weight: 700;
     letter-spacing: 0.4px;
-    margin: 0;
+    text-transform: uppercase;
+    color: $primary-main;
     font-family: "Poppins", sans-serif;
 
     [data-theme="dark"] & {
@@ -465,52 +495,65 @@
     }
   }
 
-  &__perm-group-select-all {
+  &__perm-check-hit {
     display: inline-flex;
     align-items: center;
-    gap: 5px;
-    font-size: 0.68rem;
-    font-weight: 500;
-    color: $text-muted;
-    font-family: "Poppins", sans-serif;
-    cursor: pointer;
+    justify-content: center;
+  }
+
+  &__perm-icon {
+    display: inline-flex;
+    align-items: center;
     flex-shrink: 0;
+    color: $primary-main;
+
+    [data-theme="dark"] & {
+      color: $secondary-main;
+    }
+  }
+
+  &__perm-label {
+    flex: 1;
+    min-width: 0;
+    font-size: 0.82rem;
+    font-weight: 400;
+    color: $text-primary;
+    font-family: "Poppins", sans-serif;
+
+    [data-theme="dark"] & {
+      color: rgba(255, 255, 255, 0.85);
+    }
+  }
+
+  &__perm-chevron {
+    display: inline-flex;
+    align-items: center;
+    color: $text-muted;
 
     [data-theme="dark"] & {
       color: rgba(255, 255, 255, 0.4);
     }
-
-    &:hover {
-      color: $primary-main;
-
-      [data-theme="dark"] & {
-        color: $secondary-main;
-      }
-    }
-
-    &--readonly {
-      cursor: default;
-      pointer-events: none;
-    }
   }
 
-  &__perm-options {
+  &__perm-children {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
+    padding: 4px 14px 14px 26px;
   }
 
-  &__perm-option {
+  &__perm-chip {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
+    gap: 7px;
     padding: 6px 10px;
     border: 1.5px solid $border-color;
     border-radius: 6px;
-    font-size: 0.76rem;
+    font-size: 0.74rem;
     font-family: "Poppins", sans-serif;
     color: $text-primary;
     cursor: pointer;
+    user-select: none;
     transition:
       border-color 0.15s,
       background 0.15s;
@@ -522,6 +565,10 @@
 
     &:hover {
       border-color: $primary-main;
+
+      [data-theme="dark"] & {
+        border-color: $secondary-main;
+      }
     }
 
     &--selected {
@@ -543,6 +590,16 @@
     }
   }
 
+  &__perm-chip-icon {
+    display: inline-flex;
+    align-items: center;
+    color: $text-muted;
+
+    [data-theme="dark"] & {
+      color: rgba(255, 255, 255, 0.45);
+    }
+  }
+
   &__ac-checkbox {
     width: 14px;
     height: 14px;
@@ -550,6 +607,7 @@
     border-radius: 3px;
     flex-shrink: 0;
     position: relative;
+    background: #fff;
     transition:
       background 0.15s,
       border-color 0.15s;
@@ -599,6 +657,7 @@
 
     [data-theme="dark"] & {
       border-color: rgba(255, 255, 255, 0.2);
+      background: transparent;
     }
   }
 }

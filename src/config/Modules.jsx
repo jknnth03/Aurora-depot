@@ -66,7 +66,7 @@ export const MODULES = {
       ONEUSER: {
         name: "One User",
         permissionId: "USERMANAGEMENT.ONEUSER",
-        permissionKey: "user",
+        permissionKey: "one-user",
         path: "one-user",
         icon: <PeopleAltIcon sx={iconStyles.child} />,
       },
@@ -80,7 +80,8 @@ export const MODULES = {
       PERMISSIONS: {
         name: "Permissions",
         permissionId: "USERMANAGEMENT.PERMISSIONS",
-        permissionKey: null,
+        // was null (null = visible to everyone); now requires the permission key
+        permissionKey: "permissions",
         path: "permissions",
         icon: <VpnKeyIcon sx={iconStyles.child} />,
       },

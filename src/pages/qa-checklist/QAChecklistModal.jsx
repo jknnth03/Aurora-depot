@@ -35,12 +35,135 @@ import "./QAChecklistModal.scss";
 
 const TOTAL_CENTS = 10000;
 
+const REQUIRE_ALL_CATEGORIES = true;
+
+const CHECKLIST_TYPE_PARAMS = { status: "active", per_page: 100 };
+
+const CATEGORIES = [
+  {
+    key: "is_sanitation",
+    label: "Sanitation",
+    payloadKey: "sanitation_percentage",
+  },
+  {
+    key: "is_structural",
+    label: "Structural",
+    payloadKey: "structural_percentage",
+  },
+  {
+    key: "is_equipment",
+    label: "Equipment",
+    payloadKey: "equipment_percentage",
+  },
+];
+
 const toCents = (value) => Math.round((Number(value) || 0) * 100);
 
-const sumCents = (sections = []) =>
-  sections.reduce((total, section) => total + toCents(section?.percentage), 0);
-
 const formatCents = (cents) => String(Number((cents / 100).toFixed(2)));
+
+// A category is only "active" in a section when at least one question is checked for it
+const sectionHasCategory = (section, key) =>
+  (section?.questions ?? []).some((q) => q?.[key]);
+
+// Category percentage (in cents) entered in a section. Ignored if no question is checked for that category.
+const computeSectionCategoryCents = (section) => {
+  const result = {};
+
+  CATEGORIES.forEach(({ key, payloadKey }) => {
+    result[key] = sectionHasCategory(section, key)
+      ? toCents(section?.[payloadKey])
+      : 0;
+  });
+
+  return result;
+};
+
+const computeCategoryCents = (sections = []) => {
+  const totals = {};
+  CATEGORIES.forEach(({ key }) => {
+    totals[key] = 0;
+  });
+
+  (sections ?? []).forEach((section) => {
+    const sectionCents = computeSectionCategoryCents(section);
+    CATEGORIES.forEach(({ key }) => {
+      totals[key] += sectionCents[key];
+    });
+  });
+
+  return totals;
+};
+
+const computeOverallCents = (categoryTotals = {}) => {
+  const sumCents = CATEGORIES.reduce(
+    (total, { key }) => total + (categoryTotals?.[key] ?? 0),
+    0,
+  );
+  return Math.round(sumCents / CATEGORIES.length);
+};
+
+const isCategoryTotalsValid = (totals = {}) => {
+  const categoriesToCheck = REQUIRE_ALL_CATEGORIES
+    ? CATEGORIES
+    : CATEGORIES.filter(({ key }) => (totals[key] ?? 0) > 0);
+
+  if (!categoriesToCheck.length) return false;
+  return categoriesToCheck.every(({ key }) => totals[key] === TOTAL_CENTS);
+};
+
+const buildPayload = (form) => ({
+  name: form.name,
+  description: (form.description ?? "").trim(),
+  checklist_type_id: form.checklist_type_id,
+  sections: (form.sections ?? []).map((section) => {
+    const questions = section?.questions ?? [];
+    const sectionCents = computeSectionCategoryCents(section);
+
+    const percentages = {};
+    CATEGORIES.forEach(({ key, payloadKey }) => {
+      percentages[payloadKey] = sectionHasCategory(section, key)
+        ? sectionCents[key] / 100
+        : null;
+    });
+
+    return {
+      name: section.name,
+      ...percentages,
+      questions: questions.map((q) => ({
+        name: q.name,
+        is_sanitation: !!q.is_sanitation,
+        is_structural: !!q.is_structural,
+        is_equipment: !!q.is_equipment,
+      })),
+    };
+  }),
+});
+
+const mapDetailSectionToForm = (section) => {
+  const questions = section?.questions?.length
+    ? section.questions.map((q) => ({
+        name: q?.name ?? "",
+        is_sanitation: !!q?.is_sanitation,
+        is_structural: !!q?.is_structural,
+        is_equipment: !!q?.is_equipment,
+      }))
+    : [emptyQuestion()];
+
+  const percentages = {};
+  CATEGORIES.forEach(({ payloadKey }) => {
+    const raw = section?.[payloadKey];
+    percentages[payloadKey] =
+      raw === undefined || raw === null || raw === ""
+        ? ""
+        : String(Number(Number(raw).toFixed(2)));
+  });
+
+  return {
+    name: section?.name ?? "",
+    ...percentages,
+    questions,
+  };
+};
 
 const sanitizePercentage = (raw) => {
   let value = String(raw ?? "").replace(/[^\d.]/g, "");
@@ -67,14 +190,53 @@ const questionSchema = yup.object({
   is_equipment: yup.boolean().default(false),
 });
 
+// Percentage is required only when at least one question in the section is checked for that category
+const categoryPercentageSchema = (key, label) =>
+  yup
+    .string()
+    .nullable()
+    .test("category-percentage", function (value) {
+      const questions = this.parent?.questions ?? [];
+      const hasChecked = questions.some((q) => q?.[key]);
+      if (!hasChecked) return true;
+
+      const raw = String(value ?? "").trim();
+      if (raw === "" || raw === ".") {
+        return this.createError({
+          message: `${label} percentage is required.`,
+        });
+      }
+
+      const num = Number(raw);
+      if (Number.isNaN(num)) {
+        return this.createError({
+          message: `${label} percentage is invalid.`,
+        });
+      }
+      if (num <= 0) {
+        return this.createError({
+          message: `${label} percentage must be greater than 0.`,
+        });
+      }
+      if (num > 100) {
+        return this.createError({
+          message: `${label} percentage cannot exceed 100.`,
+        });
+      }
+      return true;
+    });
+
 const sectionSchema = yup.object({
   name: yup.string().required("Section name is required."),
-  percentage: yup
-    .number()
-    .typeError("Percentage is required.")
-    .required("Percentage is required.")
-    .min(0, "Percentage cannot be negative.")
-    .max(100, "Percentage cannot exceed 100."),
+  sanitation_percentage: categoryPercentageSchema(
+    "is_sanitation",
+    "Sanitation",
+  ),
+  structural_percentage: categoryPercentageSchema(
+    "is_structural",
+    "Structural",
+  ),
+  equipment_percentage: categoryPercentageSchema("is_equipment", "Equipment"),
   questions: yup
     .array()
     .of(questionSchema)
@@ -92,16 +254,37 @@ const schema = yup.object({
     .array()
     .of(sectionSchema)
     .min(1, "At least one section is required.")
-    .test("sections-sum-100", function (value) {
+    .test("categories-sum-100", function (value) {
       if (!value?.length) return true;
-      const total = sumCents(value);
-      if (total === TOTAL_CENTS) return true;
-      return this.createError({
-        message:
-          total > TOTAL_CENTS
-            ? `Section percentages exceed 100%. Current total: ${formatCents(total)}%.`
-            : `Section percentages must add up to 100%. Current total: ${formatCents(total)}%.`,
+      const totals = computeCategoryCents(value);
+
+      const categoriesToCheck = REQUIRE_ALL_CATEGORIES
+        ? CATEGORIES
+        : CATEGORIES.filter(({ key }) => totals[key] > 0);
+
+      if (!categoriesToCheck.length) {
+        return this.createError({
+          message:
+            "Select at least one category (Sanitation, Structural or Equipment).",
+        });
+      }
+
+      const messages = [];
+      categoriesToCheck.forEach(({ key, label }) => {
+        const total = totals[key];
+        if (total > TOTAL_CENTS) {
+          messages.push(
+            `${label} exceeds 100%. Current total: ${formatCents(total)}%.`,
+          );
+        } else if (total < TOTAL_CENTS) {
+          messages.push(
+            `${label} must add up to 100%. Current total: ${formatCents(total)}%.`,
+          );
+        }
       });
+
+      if (!messages.length) return true;
+      return this.createError({ message: messages.join(" ") });
     }),
 });
 
@@ -113,7 +296,9 @@ const emptyQuestion = () => ({
 });
 const emptySection = () => ({
   name: "",
-  percentage: "",
+  sanitation_percentage: "",
+  structural_percentage: "",
+  equipment_percentage: "",
   questions: [emptyQuestion()],
 });
 
@@ -254,6 +439,38 @@ const SearchSelect = ({
   );
 };
 
+const getTotalStatus = (total) =>
+  total === TOTAL_CENTS ? "complete" : total > TOTAL_CENTS ? "over" : "pending";
+
+const CategoryTotals = ({ categoryTotals, overallCents }) => (
+  <div className="qcm__category-totals">
+    {CATEGORIES.map(({ key, label }) => {
+      const total = categoryTotals?.[key] ?? 0;
+      const status = getTotalStatus(total);
+
+      return (
+        <div
+          key={key}
+          className={`qcm__category-total qcm__category-total--${status}`}>
+          <span className="qcm__category-total-label">{label}</span>
+          <span className="qcm__category-total-value">
+            {formatCents(total)}% / 100%
+          </span>
+        </div>
+      );
+    })}
+
+    <div
+      title="Sanitation + Structural + Equipment ÷ 3"
+      className={`qcm__category-total qcm__category-total--${getTotalStatus(overallCents)}`}>
+      <span className="qcm__category-total-label">Total</span>
+      <span className="qcm__category-total-value">
+        {formatCents(overallCents)}% / 100%
+      </span>
+    </div>
+  </div>
+);
+
 const QuestionCard = ({
   control,
   register,
@@ -303,57 +520,26 @@ const QuestionCard = ({
       </div>
 
       <div className="qcm__checkbox-row">
-        <Controller
-          control={control}
-          name={`${basePath}.is_sanitation`}
-          render={({ field }) => (
-            <FormControlLabel
-              control={
-                <Checkbox
-                  {...field}
-                  checked={!!field.value}
-                  disabled={isView}
-                  size="small"
-                />
-              }
-              label="Sanitation"
-            />
-          )}
-        />
-        <Controller
-          control={control}
-          name={`${basePath}.is_structural`}
-          render={({ field }) => (
-            <FormControlLabel
-              control={
-                <Checkbox
-                  {...field}
-                  checked={!!field.value}
-                  disabled={isView}
-                  size="small"
-                />
-              }
-              label="Structural"
-            />
-          )}
-        />
-        <Controller
-          control={control}
-          name={`${basePath}.is_equipment`}
-          render={({ field }) => (
-            <FormControlLabel
-              control={
-                <Checkbox
-                  {...field}
-                  checked={!!field.value}
-                  disabled={isView}
-                  size="small"
-                />
-              }
-              label="Equipment"
-            />
-          )}
-        />
+        {CATEGORIES.map(({ key, label }) => (
+          <Controller
+            key={key}
+            control={control}
+            name={`${basePath}.${key}`}
+            render={({ field }) => (
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    {...field}
+                    checked={!!field.value}
+                    disabled={isView}
+                    size="small"
+                  />
+                }
+                label={label}
+              />
+            )}
+          />
+        ))}
       </div>
     </div>
   );
@@ -362,10 +548,13 @@ const QuestionCard = ({
 const SectionCard = ({
   control,
   register,
+  setValue,
   errors,
   sectionIndex,
   onRemoveSection,
   isView,
+  categoryTotals,
+  overallCents,
 }) => {
   const {
     fields: questionFields,
@@ -376,8 +565,24 @@ const SectionCard = ({
     name: `sections.${sectionIndex}.questions`,
   });
 
+  const watchedSection = useWatch({
+    control,
+    name: `sections.${sectionIndex}`,
+  });
+
+  // Clear the percentage of a category once no question is checked for it anymore
+  useEffect(() => {
+    CATEGORIES.forEach(({ key, payloadKey }) => {
+      if (
+        !sectionHasCategory(watchedSection, key) &&
+        watchedSection?.[payloadKey]
+      ) {
+        setValue(`sections.${sectionIndex}.${payloadKey}`, "");
+      }
+    });
+  }, [watchedSection, sectionIndex, setValue]);
+
   const sectionErrors = errors?.sections?.[sectionIndex];
-  const percentageField = register(`sections.${sectionIndex}.percentage`);
 
   return (
     <div className="qcm__section-card">
@@ -394,54 +599,70 @@ const SectionCard = ({
         )}
       </div>
 
-      <div className="qcm__field-row">
-        <div className="qcm__field">
-          <div
-            className={`qcm__input-wrap${sectionErrors?.name ? " qcm__input-wrap--error" : ""}`}>
-            <label className="qcm__label">
-              Title<span className="qcm__required">*</span>
-            </label>
-            <input
-              type="text"
-              placeholder="e.g. Customer Service"
-              disabled={isView}
-              {...register(`sections.${sectionIndex}.name`)}
-            />
-          </div>
-          {sectionErrors?.name && (
-            <p className="qcm__error">
-              <ReportProblemIcon />
-              {sectionErrors.name.message}
-            </p>
-          )}
+      <div className="qcm__field">
+        <div
+          className={`qcm__input-wrap${sectionErrors?.name ? " qcm__input-wrap--error" : ""}`}>
+          <label className="qcm__label">
+            Title<span className="qcm__required">*</span>
+          </label>
+          <input
+            type="text"
+            placeholder="e.g. Customer Service"
+            disabled={isView}
+            {...register(`sections.${sectionIndex}.name`)}
+          />
         </div>
+        {sectionErrors?.name && (
+          <p className="qcm__error">
+            <ReportProblemIcon />
+            {sectionErrors.name.message}
+          </p>
+        )}
+      </div>
 
-        <div className="qcm__field qcm__field--percentage">
-          <div
-            className={`qcm__input-wrap${sectionErrors?.percentage ? " qcm__input-wrap--error" : ""}`}>
-            <label className="qcm__label">
-              Weight (%)<span className="qcm__required">*</span>
-            </label>
-            <input
-              type="text"
-              inputMode="decimal"
-              placeholder="0"
-              autoComplete="off"
-              disabled={isView}
-              {...percentageField}
-              onChange={(e) => {
-                e.target.value = sanitizePercentage(e.target.value);
-                percentageField.onChange(e);
-              }}
-            />
-          </div>
-          {sectionErrors?.percentage && (
-            <p className="qcm__error">
-              <ReportProblemIcon />
-              {sectionErrors.percentage.message}
-            </p>
-          )}
-        </div>
+      <div className="qcm__field-row qcm__field-row--percentages">
+        {CATEGORIES.map(({ key, label, payloadKey }) => {
+          const isActive = sectionHasCategory(watchedSection, key);
+          const fieldError = sectionErrors?.[payloadKey];
+          const percentageField = register(
+            `sections.${sectionIndex}.${payloadKey}`,
+          );
+
+          return (
+            <div key={key} className="qcm__field qcm__field--percentage">
+              <div
+                title={
+                  !isActive && !isView
+                    ? `Check at least one question under ${label} to enter its percentage.`
+                    : undefined
+                }
+                className={`qcm__input-wrap${fieldError ? " qcm__input-wrap--error" : ""}`}>
+                <label className="qcm__label">
+                  {label} (%)
+                  {isActive && <span className="qcm__required">*</span>}
+                </label>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  placeholder="0"
+                  autoComplete="off"
+                  disabled={isView || !isActive}
+                  {...percentageField}
+                  onChange={(e) => {
+                    e.target.value = sanitizePercentage(e.target.value);
+                    percentageField.onChange(e);
+                  }}
+                />
+              </div>
+              {fieldError && (
+                <p className="qcm__error">
+                  <ReportProblemIcon />
+                  {fieldError.message}
+                </p>
+              )}
+            </div>
+          );
+        })}
       </div>
 
       {questionFields.map((q, qIndex) => (
@@ -465,6 +686,11 @@ const SectionCard = ({
           <AddIcon fontSize="small" /> Add Question
         </button>
       )}
+
+      <CategoryTotals
+        categoryTotals={categoryTotals}
+        overallCents={overallCents}
+      />
     </div>
   );
 };
@@ -486,25 +712,27 @@ const SectionCardSkeleton = () => (
         sx={{ ml: 1 }}
       />
     </div>
-    <div className="qcm__field-row">
-      <div className="qcm__field">
-        <Skeleton
-          className="qcm__skeleton"
-          variant="text"
-          width={60}
-          height={16}
-        />
-        <Skeleton className="qcm__skeleton" variant="rounded" height={40} />
-      </div>
-      <div className="qcm__field qcm__field--percentage">
-        <Skeleton
-          className="qcm__skeleton"
-          variant="text"
-          width={80}
-          height={16}
-        />
-        <Skeleton className="qcm__skeleton" variant="rounded" height={40} />
-      </div>
+    <div className="qcm__field">
+      <Skeleton
+        className="qcm__skeleton"
+        variant="text"
+        width={60}
+        height={16}
+      />
+      <Skeleton className="qcm__skeleton" variant="rounded" height={40} />
+    </div>
+    <div className="qcm__field-row qcm__field-row--percentages">
+      {[0, 1, 2].map((item) => (
+        <div key={item} className="qcm__field qcm__field--percentage">
+          <Skeleton
+            className="qcm__skeleton"
+            variant="text"
+            width={80}
+            height={16}
+          />
+          <Skeleton className="qcm__skeleton" variant="rounded" height={40} />
+        </div>
+      ))}
     </div>
     <div className="qcm__question-card">
       <Skeleton
@@ -545,36 +773,6 @@ const SectionCardSkeleton = () => (
   </div>
 );
 
-const WeightTotal = ({ totalCents }) => {
-  const isComplete = totalCents === TOTAL_CENTS;
-  const isOver = totalCents > TOTAL_CENTS;
-  const color = isComplete ? "#2e7d32" : isOver ? "#d32f2f" : "#f47b20";
-  const remaining = TOTAL_CENTS - totalCents;
-
-  let note = `${formatCents(remaining)}% remaining`;
-  if (isComplete) note = "Complete";
-  if (isOver) note = `${formatCents(Math.abs(remaining))}% over`;
-
-  return (
-    <div
-      style={{
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
-        padding: "8px 12px",
-        marginTop: 8,
-        borderRadius: 8,
-        border: `1px solid ${color}`,
-        color,
-        fontSize: "0.8rem",
-        fontWeight: 600,
-      }}>
-      <span>Total Weight: {formatCents(totalCents)}% / 100%</span>
-      <span>{note}</span>
-    </div>
-  );
-};
-
 const QAChecklistModal = ({ open, onClose, selectedChecklist = null }) => {
   const [mode, setMode] = useState("add");
 
@@ -583,6 +781,7 @@ const QAChecklistModal = ({ open, onClose, selectedChecklist = null }) => {
     register,
     handleSubmit,
     reset,
+    setValue,
     formState: { errors },
   } = useForm({
     resolver: yupResolver(schema),
@@ -601,24 +800,43 @@ const QAChecklistModal = ({ open, onClose, selectedChecklist = null }) => {
   } = useFieldArray({ control, name: "sections" });
 
   const watchedSections = useWatch({ control, name: "sections" });
-  const totalCents = sumCents(watchedSections ?? []);
-  const isTotalReached = totalCents >= TOTAL_CENTS;
+  const categoryTotals = computeCategoryCents(watchedSections ?? []);
+  const overallCents = computeOverallCents(categoryTotals);
+  const isAllCategoriesReached = CATEGORIES.every(
+    ({ key }) => categoryTotals[key] >= TOTAL_CENTS,
+  );
+
+  const canSubmit = isCategoryTotalsValid(categoryTotals);
 
   const [
     triggerGetChecklistTypes,
     { data: checklistTypesData, isFetching: checklistTypesLoading },
   ] = useLazyGetChecklistTypesQuery();
-  const checklistTypeOptions = checklistTypesData?.data?.data ?? [];
-
-  const handleOpenChecklistTypes = () => {
-    triggerGetChecklistTypes({ status: "active", per_page: 100 }, true);
-  };
 
   const { data: checklistDetailData, isFetching: checklistDetailLoading } =
     useGetChecklistQuery(selectedChecklist?.id, {
       skip: !open || !selectedChecklist?.id,
     });
   const checklistDetail = checklistDetailData?.data;
+
+  const checklistTypeOptions = useMemo(() => {
+    const list = checklistTypesData?.data?.data ?? [];
+    const detailType = checklistDetail?.checklist_type;
+    if (detailType?.id && !list.some((o) => o.id === detailType.id)) {
+      return [detailType, ...list];
+    }
+    return list;
+  }, [checklistTypesData, checklistDetail]);
+
+  const handleOpenChecklistTypes = () => {
+    triggerGetChecklistTypes(CHECKLIST_TYPE_PARAMS, true);
+  };
+
+  useEffect(() => {
+    if (open && selectedChecklist?.id) {
+      triggerGetChecklistTypes(CHECKLIST_TYPE_PARAMS, true);
+    }
+  }, [open, selectedChecklist?.id, triggerGetChecklistTypes]);
 
   const [createChecklist] = useCreateChecklistMutation();
   const [updateChecklist] = useUpdateChecklistMutation();
@@ -643,15 +861,19 @@ const QAChecklistModal = ({ open, onClose, selectedChecklist = null }) => {
     reset({
       name: checklistDetail.name ?? "",
       description: checklistDetail.description ?? "",
-      checklist_type_id: checklistDetail.checklist_type_id ?? "",
+      checklist_type_id:
+        checklistDetail.checklist_type_id ??
+        checklistDetail.checklist_type?.id ??
+        "",
       sections: checklistDetail.sections?.length
-        ? checklistDetail.sections
+        ? checklistDetail.sections.map(mapDetailSectionToForm)
         : [emptySection()],
     });
   }, [open, selectedChecklist, checklistDetail, reset]);
 
   const onValidSubmit = (form) => {
-    setPendingFormData(form);
+    if (!isCategoryTotalsValid(computeCategoryCents(form.sections))) return;
+    setPendingFormData(buildPayload(form));
     setConfirmOpen(true);
   };
 
@@ -843,7 +1065,7 @@ const QAChecklistModal = ({ open, onClose, selectedChecklist = null }) => {
             )}
           </div>
 
-          <div className="qcm__group">
+          <div className="qcm__group qcm__group--last">
             <p className="qcm__group-label">Sections</p>
             {isDetailLoading ? (
               <>
@@ -857,14 +1079,15 @@ const QAChecklistModal = ({ open, onClose, selectedChecklist = null }) => {
                     key={s.id}
                     control={control}
                     register={register}
+                    setValue={setValue}
                     errors={errors}
                     sectionIndex={sIndex}
                     isView={isView}
+                    categoryTotals={categoryTotals}
+                    overallCents={overallCents}
                     onRemoveSection={() => removeSection(sIndex)}
                   />
                 ))}
-
-                {!isView && <WeightTotal totalCents={totalCents} />}
 
                 {sectionsErrorMessage && (
                   <p className="qcm__error">
@@ -877,14 +1100,14 @@ const QAChecklistModal = ({ open, onClose, selectedChecklist = null }) => {
                   <button
                     type="button"
                     className="qcm__add-section-link"
-                    disabled={isTotalReached}
+                    disabled={isAllCategoriesReached}
                     title={
-                      isTotalReached
-                        ? "Total weight already reached 100%."
+                      isAllCategoriesReached
+                        ? "Sanitation, Structural and Equipment already reached 100%."
                         : undefined
                     }
                     style={
-                      isTotalReached
+                      isAllCategoriesReached
                         ? { opacity: 0.5, cursor: "not-allowed" }
                         : undefined
                     }
@@ -895,25 +1118,27 @@ const QAChecklistModal = ({ open, onClose, selectedChecklist = null }) => {
               </>
             )}
           </div>
-
-          <div className="qcm__footer">
-            {!isDetailLoading &&
-              (isView ? (
-                <EditButton onClick={() => setMode("edit")} />
-              ) : (
-                <>
-                  {selectedChecklist && (
-                    <BackModalButton onClick={() => setMode("view")} />
-                  )}
-                  <SaveButton
-                    label={mode === "edit" ? "Save Changes" : "Add Checklist"}
-                    onClick={handleSubmit(onValidSubmit)}
-                  />
-                </>
-              ))}
-          </div>
         </form>
       </DialogContent>
+
+      {!isDetailLoading && (
+        <div className="qcm__footer">
+          {isView ? (
+            <EditButton onClick={() => setMode("edit")} />
+          ) : (
+            <>
+              {selectedChecklist && (
+                <BackModalButton onClick={() => setMode("view")} />
+              )}
+              <SaveButton
+                label={mode === "edit" ? "Save Changes" : "Add Checklist"}
+                disabled={!canSubmit}
+                onClick={handleSubmit(onValidSubmit)}
+              />
+            </>
+          )}
+        </div>
+      )}
 
       <ConfirmDialog
         open={confirmOpen}

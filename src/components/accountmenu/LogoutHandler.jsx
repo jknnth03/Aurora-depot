@@ -4,6 +4,9 @@ import LogoutTransition from "../accountmenu/Logouttransition.jsx";
 import router from "../../config/router.jsx";
 import { useLogoutMutation } from "../../features/api/login/loginApi.js";
 
+// const ONE_RDF_URL =
+//   import.meta.env.VITE_ONE_RDF_URL || "https://pretest-one.rdfmis.com/";
+
 const LogoutHandler = () => {
   const dispatch = useDispatch();
   const isLoggingOut = useSelector(selectIsLoggingOut);
@@ -19,6 +22,10 @@ const LogoutHandler = () => {
 
     localStorage.removeItem("token");
     localStorage.removeItem("user");
+
+    // dispatch(clearCredentials());
+    // window.location.href = ONE_RDF_URL;
+
     router.navigate("/login").then(() => {
       dispatch(clearCredentials());
     });
